@@ -21,8 +21,7 @@ pub static AWS_FUNC_ERR_TYPE: &str = "Lambda-Runtime-Function-Error-Type";
 /// Implementations of this trait *should* enable reading data without requiring ownership of or exclusive reference to the type,
 /// therefore it is **not** always possible to implement it **directly** on HTTP Response types exposed by different vendors -
 /// for example reading the body from a [ureq::Response](https://docs.rs/ureq/2.4.0/ureq/struct.Response.html#method.into_string) instance
-/// moves the instance, making reading any header (for example request id) or the response's status code impossible -
-/// or failing entirely if a reference to the instance already exist such as when using a [`crate::data::context::RefLambdaContext`] context implementation.
+/// moves the instance, making reading any header (for example request id) or the response's status code impossible.
 ///
 /// A good approach is to implement this trait on a wrapper type that caches the relevant headers and reads the body,
 /// for an example see [`crate::backends::ureq::UreqResponse`].

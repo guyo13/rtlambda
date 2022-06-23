@@ -15,17 +15,21 @@ Add `rtlambda` and `serde` as a dependency to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-rtlambda = "0.0.1"
+rtlambda = "0.0.2"
 serde = { version = "1", features = ["derive"] }
 ```
 
 And in your `main.rs` file:
 ```rust
-use rtlambda::prelude::*;
+use rtlambda::{
+    data::{env::RuntimeEnvVars, response::LambdaAPIResponse},
+    prelude::*,
+};
 use serde::Serialize;
 
 // Import the [`default_runtime`] macro from rtlambda.
-#[macro_use] extern crate rtlambda;
+#[macro_use]
+extern crate rtlambda;
 
 // Create a struct representing the lambda's response, and derive the [`serde::Serialize`] trait.
 #[derive(Serialize, Clone)]
@@ -40,56 +44,37 @@ type OUT = EchoMessage;
 // The error type must implement the `Display` trait
 type ERR = String;
 
-// Implement an initialization function.
-// The initialization function returns a Result with the Ok type resolving to a dynamically allocated
-// closure that accepts the Event from Lambda (as an optional string) and the context object.
-// The closure itself returns a Result with the Ok and Err types being the previously defined `OUT` and `ERR` types respectively.
-// The initialization function may fail (e.g if a db connection was not succesfully opened, etc..) and in that case
-// the function should return an Err variant of the same `ERR` type defined for the event handler.
-fn initialize() -> Result<
-    Box<dyn Fn(Option<&str>, RefLambdaContext<LambdaRuntimeEnv, UreqResponse>) -> Result<OUT, ERR>>,
-    ERR,
-> {
-    // Your one-time initialization logic goes here:
+// Implement the event handler
+pub struct EchoEventHandler {}
 
-    //
-
-    // Return the event handler closure
-    return Ok(Box::new(move |event, context| {
+impl<R: LambdaAPIResponse, ENV: RuntimeEnvVars> EventHandler<OUT, ERR, EventContext<ENV, R>>
+    for EchoEventHandler
+{
+    fn initialize(&mut self) -> Result<(), ERR> {
+        // Initialization logic goes here...
+        Ok(())
+    }
+    fn on_event(&mut self, event: &str, context: &EventContext<ENV, R>) -> Result<OUT, ERR> {
         // Get the aws request id
         let req_id = context.aws_request_id().unwrap();
 
-        // Unwrap the event string 
-        let event = match event {
-            Some(v) => v,
-            None => {
-                return Err(format!(
-                    "AWS should not permit empty events. Something strange must've happened."
-                ))
-            }
-        };
-        
         if event == "\"\"" {
             return Err(format!("Empty input, nothing to echo."));
         }
-
-        // rtlambda leaves use-case specific concerns such as event JSON deserialization to the handler.
-        // In this example we do not deserialize the event. Use serde_json or any other library to perform deserialization if needed.
 
         // Echo the event back as a string.
         Ok(EchoMessage {
             msg: format!("ECHO: {}", event),
             req_id: req_id.to_string(),
         })
-
-    }));
+    }
 }
 
 fn main() {
     // Create a runtime instance and run its loop.
     // This is the equivalent of:
-    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, LambdaRuntimeEnv, OUT, ERR>::new(LAMBDA_VER, initialize);
-    let mut runtime = default_runtime!(OUT, ERR, LAMBDA_VER, initialize);
+    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, EchoEventHandler, LambdaRuntimeEnv, OUT, ERR>::new(LAMBDA_VER, initialize);
+    let mut runtime = default_runtime!(EchoEventHandler, OUT, ERR, LAMBDA_VER, EchoEventHandler {});
 
     runtime.run();
 }
