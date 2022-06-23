@@ -50,7 +50,7 @@ impl<R: LambdaAPIResponse, ENV: RuntimeEnvVars> EventHandler<OUT, ERR, EventCont
 fn main() {
     // Create a runtime instance and run its loop.
     // This is the equivalent of:
-    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, EchoEventHandler, LambdaRuntimeEnv, OUT, ERR>::new(LAMBDA_VER, initialize);
+    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, EchoEventHandler, LambdaRuntimeEnv, OUT, ERR>::new(LAMBDA_VER, EchoEventHandler {});
     let mut runtime = default_runtime!(EchoEventHandler, OUT, ERR, LAMBDA_VER, EchoEventHandler {});
 
     runtime.run();

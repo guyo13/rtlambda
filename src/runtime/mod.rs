@@ -239,7 +239,7 @@ where
 
         handle_response!(resp);
 
-        // If AWS returns the "Lambda-Runtime-Trace-Id" header, set its value to the -
+        // If AWS returns the "Lambda-Runtime-Trace-Id" header, assign its value to the -
         // "_X_AMZN_TRACE_ID" env var
         if let Some(req_id) = resp.trace_id() {
             set_var(OsStr::new("_X_AMZN_TRACE_ID"), OsStr::new(req_id));
