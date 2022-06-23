@@ -20,32 +20,34 @@ pub static LAMBDA_VER: &str = "2018-06-01";
 /// which currently ships with a [ureq](https://crates.io/crates/ureq) based HTTP Backend and [serde_json](https://crates.io/crates/serde_json) for serialization.
 pub mod prelude {
     pub use crate::backends::ureq::*;
-    pub use crate::data::context::{LambdaContext, RefLambdaContext};
+    pub use crate::data::context::{EventContext, LambdaContext};
     pub use crate::data::env::LambdaRuntimeEnv;
+    pub use crate::runtime::event_handler::EventHandler;
     pub use crate::runtime::{DefaultRuntime, LambdaRuntime};
     pub use crate::LAMBDA_VER;
 }
 
-/// Creates a [`crate::runtime::DefaultRuntime`] with the given response, transport, env, out, err types as well as version and initializer.
+/// Creates a [`crate::runtime::DefaultRuntime`] with the given response, transport, handler, env, out, err types as well as version and initializer.
 #[macro_export]
 macro_rules! create_runtime {
-    ($response:ty, $transport:ty, $env:ty, $out:ty, $err:ty, $ver:expr, $init:ident) => {
-        DefaultRuntime::<$response, $transport, $env, $out, $err>::new($ver, $init);
+    ($response:ty, $transport:ty, $handler:ty, $env:ty, $out:ty, $err:ty, $ver:expr, $ev_handler:expr) => {
+        DefaultRuntime::<$response, $transport, $handler, $env, $out, $err>::new($ver, $ev_handler);
     };
 }
 
 /// Creates a [`crate::runtime::DefaultRuntime`] with ureq based HTTP backend and the default implementation of env-vars handling.
 #[macro_export]
 macro_rules! default_runtime {
-    ($out:ty, $err:ty, $ver:expr, $init:ident) => {
+    ($handler:ty, $out:ty, $err:ty, $ver:expr, $ev_handler:expr) => {
         create_runtime!(
             UreqResponse,
             UreqTransport,
+            $handler,
             LambdaRuntimeEnv,
             $out,
             $err,
             $ver,
-            $init
+            $ev_handler
         )
     };
 }

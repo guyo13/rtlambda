@@ -42,46 +42,44 @@ pub trait LambdaContext {
     fn client_context(&self) -> Option<&str>;
 }
 
-/// A generic implementation of [`LambdaContext`] that relies on **borrowing** existing owned
-/// instances of types that implement [`crate::data::env::RuntimeEnvVars`] - for reading environment variables -
-/// and [`crate::data::response::LambdaAPIResponse`] - for reading event-related data.
-///
-/// It can be used so long that its lifetime is less than or equal to its referents.
+/// A generic implementation of [`LambdaContext`] that owns instances of types that implement -
+/// [`crate::data::env::RuntimeEnvVars`] for reading environment variables, and
+/// [`crate::data::response::LambdaAPIResponse`] for reading event-related data.
 ///
 /// This implementation is used to avoid needlessly copying data that is immutable by definition,
 /// however it is assumed that types implementing [`crate::data::response::LambdaAPIResponse`] can be read from
 /// immutably - which is not the always case with HTTP Response types,
 /// for example [ureq::Response](https://docs.rs/ureq/2.4.0/ureq/struct.Response.html#method.into_string) consumes itself upon reading the response body.
 /// See [`crate::data::response::LambdaAPIResponse`].
-pub struct RefLambdaContext<'a, E, R>
+pub struct EventContext<E, R>
 where
     E: RuntimeEnvVars,
     R: LambdaAPIResponse,
 {
-    /// A shared reference to a type implementing [`crate::data::env::RuntimeEnvVars`].
-    pub env_vars: &'a E,
-    /// A shared reference to a type implementing [`crate::data::response::LambdaAPIResponse`].
-    pub invo_resp: &'a R,
+    /// An instance of a type implementing [`crate::data::env::RuntimeEnvVars`].
+    pub env_vars: E,
+    /// An instance of a type implementing [`crate::data::response::LambdaAPIResponse`].
+    pub invo_resp: Option<R>,
 }
 
-impl<'a, E, R> LambdaContext for RefLambdaContext<'a, E, R>
+impl<E, R> LambdaContext for EventContext<E, R>
 where
     E: RuntimeEnvVars,
     R: LambdaAPIResponse,
 {
     #[inline]
     fn get_deadline(&self) -> Option<Duration> {
-        self.invo_resp.deadline()
+        self.invo_resp.as_ref().unwrap().deadline()
     }
 
     #[inline(always)]
     fn invoked_function_arn(&self) -> Option<&str> {
-        self.invo_resp.invoked_function_arn()
+        self.invo_resp.as_ref().unwrap().invoked_function_arn()
     }
 
     #[inline(always)]
     fn aws_request_id(&self) -> Option<&str> {
-        self.invo_resp.aws_request_id()
+        self.invo_resp.as_ref().unwrap().aws_request_id()
     }
 
     #[inline(always)]
@@ -111,11 +109,11 @@ where
 
     #[inline(always)]
     fn cognito_identity(&self) -> Option<&str> {
-        self.invo_resp.cognito_identity()
+        self.invo_resp.as_ref().unwrap().cognito_identity()
     }
 
     #[inline(always)]
     fn client_context(&self) -> Option<&str> {
-        self.invo_resp.client_context()
+        self.invo_resp.as_ref().unwrap().client_context()
     }
 }

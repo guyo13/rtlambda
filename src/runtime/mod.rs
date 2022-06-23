@@ -2,15 +2,20 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::data::context::RefLambdaContext;
+/// Defines the interface an event handler should implement.
+pub mod event_handler;
+
+use crate::data::context::{EventContext, LambdaContext};
 use crate::data::env::RuntimeEnvVars;
 use crate::data::response::{LambdaAPIResponse, AWS_FUNC_ERR_TYPE};
 use crate::error::{Error, CONTAINER_ERR};
+use crate::runtime::event_handler::EventHandler;
 use crate::transport::Transport;
 
 use std::env::set_var;
 use std::ffi::OsStr;
 use std::fmt::Display;
+use std::marker::PhantomData;
 
 use serde::Serialize;
 
@@ -88,45 +93,39 @@ where
 /// The `ENV` type parameter defines the implementation of [`crate::data::env::RuntimeEnvVars`] for reading the env-vars set for the runtime.
 ///
 /// The `ERR` type parameter is a user-defined type representing any error that may occur during initialization or invocation of the event handler.
-pub struct DefaultRuntime<R, T, ENV, OUT, ERR>
+pub struct DefaultRuntime<R, T, H, ENV, OUT, ERR>
 where
     R: LambdaAPIResponse,
     T: Transport<R>,
+    H: EventHandler<OUT, ERR, EventContext<ENV, R>>,
     ENV: RuntimeEnvVars,
-    //   I: LambdaContext,
     ERR: Display,
     OUT: Serialize,
 {
-    /// An owned instance of a type implementing [`crate::data::env::RuntimeEnvVars`].
-    env_vars: ENV,
+    /// An owned container that holds a copy of the env vars and the current invocation data.
+    context: EventContext<ENV, R>,
     /// The Lambda API version string.
     version: String,
     /// URI of the Lambda API.
     api_base: String,
     /// An owned instance of the HTTP Backend implementing [`crate::transport::Transport`].
     transport: T,
-    /// An initialization function that sets up persistent variables and returns the event handler.
-    initializer:
-        fn()
-            -> Result<Box<dyn Fn(Option<&str>, RefLambdaContext<ENV, R>) -> Result<OUT, ERR>>, ERR>,
+    /// The event handler instance.
+    handler: H,
+    output_type: PhantomData<OUT>,
+    err_type: PhantomData<ERR>,
 }
 
-impl<R, T, ENV, OUT, ERR> DefaultRuntime<R, T, ENV, OUT, ERR>
+impl<R, T, H, ENV, OUT, ERR> DefaultRuntime<R, T, H, ENV, OUT, ERR>
 where
     R: LambdaAPIResponse,
     T: Transport<R>,
+    H: EventHandler<OUT, ERR, EventContext<ENV, R>>,
     ENV: RuntimeEnvVars,
-    //   I: LambdaContext,
     ERR: Display,
     OUT: Serialize,
 {
-    pub fn new(
-        version: &str,
-        initializer: fn() -> Result<
-            Box<dyn Fn(Option<&str>, RefLambdaContext<ENV, R>) -> Result<OUT, ERR>>,
-            ERR,
-        >,
-    ) -> Self {
+    pub fn new(version: &str, handler: H) -> Self {
         // Initialize default env vars and check for the host and port of the runtime API.
         let env_vars = ENV::default();
         let api_base = match env_vars.get_runtime_api() {
@@ -140,63 +139,63 @@ where
         // Start the transport layer object
         let transport = T::default();
 
-        Self {
+        // Initialize the context object
+        let context = EventContext::<ENV, R> {
             env_vars,
+            invo_resp: None,
+        };
+
+        Self {
+            context,
             version: formatted_version,
             api_base,
             transport,
-            initializer,
+            handler,
+            output_type: PhantomData,
+            err_type: PhantomData,
         }
-    }
-
-    #[inline(always)]
-    pub fn get_env(&self) -> &ENV {
-        &self.env_vars
     }
 }
 
-impl<R, T, ENV, OUT, ERR> LambdaRuntime<R, T, OUT> for DefaultRuntime<R, T, ENV, OUT, ERR>
+impl<R, T, H, ENV, OUT, ERR> LambdaRuntime<R, T, OUT> for DefaultRuntime<R, T, H, ENV, OUT, ERR>
 where
     R: LambdaAPIResponse,
     T: Transport<R>,
+    H: EventHandler<OUT, ERR, EventContext<ENV, R>>,
     ENV: RuntimeEnvVars,
-    // I: LambdaContext,
     ERR: Display,
     OUT: Serialize,
 {
     fn run(&mut self) {
         // Run the app's initializer and check for errors
-        let init_result = (self.initializer)();
-        let lambda = match init_result {
-            Err(init_err) => {
-                // Try reporting to the Lambda service if there is an error during initialization
-                // TODO: Take error type and request from ERR
-                match self.initialization_error(Some("Runtime.InitError"), None) {
-                    Ok(r) => r,
-                    // If an error occurs during reporting the previous error, panic.
-                    Err(err) => panic!(
-                        "Failed to report initialization error. Error: {}, AWS Error: {}",
-                        &init_err, err
-                    ),
-                };
-                // After reporting an init error just panic.
-                panic!("Initialization Error: {}", &init_err);
-            }
-            // On successfull init, unwrap the underlying closure (event handler)
-            Ok(event_handler) => event_handler,
-        };
+        let init_result = self.handler.initialize();
+        if let Err(init_err) = init_result {
+            // Try reporting to the Lambda service if there is an error during initialization
+            // TODO: Take error type and request from ERR
+            match self.initialization_error(Some("Runtime.InitError"), None) {
+                Ok(r) => r,
+                // If an error occurs during reporting the previous error, panic.
+                Err(err) => panic!(
+                    "Failed to report initialization error. Error: {}, AWS Error: {}",
+                    &init_err, err
+                ),
+            };
+            // After reporting an init error just panic.
+            panic!("Initialization Error: {}", &init_err);
+        }
 
         // Start event processing loop as specified in [https://docs.aws.amazon.com/lambda/latest/dg/runtimes-custom.html]
         loop {
             // Get the next event in the queue.
-            // Failing to get the next event will either panic (on server error) or continue (on client-error codes).
-            let next: Result<R, _> = self.next_invocation();
-            if next.is_err() {
+            // Failing to get the next event will either panic (on server error) or continue with an error (on client-error codes).
+            self.context.invo_resp = match self.next_invocation() {
                 // TODO - perhaps log the error
-                continue;
-            }
-            let next_resp = next.as_ref().unwrap();
-            let request_id = match next_resp.aws_request_id() {
+                Err(_e) => continue,
+                // TODO - check if RVO optimization kicks in?
+                Ok(resp) => Some(resp),
+            };
+            // Vaidate that request id is present in the response.
+            let request_id = match self.context.aws_request_id() {
                 Some(rid) => rid,
                 None => {
                     // TODO - figure out what we'd like to do with the result returned from success/client-err api responses
@@ -205,18 +204,19 @@ where
                 }
             };
 
-            // Create the context object for the lambda execution
-            // TODO - Design a way to pass a generic type implementing LambdaContext and use it to construct the context
-            let context = RefLambdaContext {
-                env_vars: &self.env_vars,
-                invo_resp: next_resp,
-            };
             // Retrieve the event JSON
             // TODO - deserialize? Currently user code should deserialize inside their handler
-            let event = next_resp.event_response();
+            // Both the invocation response and event response are safe to unwrap at this point.
+            let event = self
+                .context
+                .invo_resp
+                .as_ref()
+                .unwrap()
+                .event_response()
+                .unwrap();
 
             // Execute the event handler
-            let lambda_output = lambda(event, context);
+            let lambda_output = self.handler.on_event(event, &self.context);
 
             // TODO - figure out what we'd like to do with the result returned from success/client-err api responses (e.g: log, run a user defined callback...)
             let _ = match lambda_output {
@@ -243,7 +243,7 @@ where
         // "_X_AMZN_TRACE_ID" env var
         if let Some(req_id) = resp.trace_id() {
             set_var(OsStr::new("_X_AMZN_TRACE_ID"), OsStr::new(req_id));
-            self.env_vars.set_trace_id(Some(req_id));
+            self.context.env_vars.set_trace_id(Some(req_id));
         };
 
         Ok(resp)
