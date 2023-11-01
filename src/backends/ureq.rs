@@ -160,16 +160,18 @@ impl Default for UreqTransport {
     }
 }
 
-impl Transport<UreqResponse> for UreqTransport {
+impl Transport for UreqTransport {
+    type Response = UreqResponse;
+
     fn get(
         &self,
         url: &str,
         body: Option<&str>,
         headers: Option<(Vec<&str>, Vec<&str>)>,
-    ) -> Result<UreqResponse, Error> {
+    ) -> Result<Self::Response, Error> {
         let res = self.request("GET", url, body, headers);
         if let Ok(res) = res {
-            return UreqResponse::from_response(res);
+            return Self::Response::from_response(res);
         }
         Err(res.unwrap_err())
     }
@@ -179,10 +181,10 @@ impl Transport<UreqResponse> for UreqTransport {
         url: &str,
         body: Option<&str>,
         headers: Option<(Vec<&str>, Vec<&str>)>,
-    ) -> Result<UreqResponse, Error> {
+    ) -> Result<Self::Response, Error> {
         let res = self.request("POST", url, body, headers);
         if let Ok(res) = res {
-            return UreqResponse::from_response(res);
+            return Self::Response::from_response(res);
         }
         Err(res.unwrap_err())
     }

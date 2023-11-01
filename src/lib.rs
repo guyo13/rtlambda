@@ -27,11 +27,11 @@ pub mod prelude {
     pub use crate::LAMBDA_VER;
 }
 
-/// Creates a [`crate::runtime::DefaultRuntime`] with the given response, transport, handler, env, out, err types as well as version and initializer.
+/// Creates a [`crate::runtime::DefaultRuntime`] with the given transport, handler, env, out, err types as well as version and initializer.
 #[macro_export]
 macro_rules! create_runtime {
     ($response:ty, $transport:ty, $handler:ty, $env:ty, $ver:expr, $ev_handler:expr) => {
-        DefaultRuntime::<$response, $transport, $handler, $env>::new($ver, $ev_handler);
+        DefaultRuntime::<$transport, $handler, $env>::new($ver, $ev_handler);
     };
 }
 

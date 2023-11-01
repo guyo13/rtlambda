@@ -78,15 +78,14 @@ pub trait LambdaRuntime {
 /// Works by accepting an owned [`EventHandler`] object which is first initialized by the runtime by calling [`EventHandler::initialize`].
 ///
 /// The `ENV` type parameter defines the implementation of [`crate::data::env::RuntimeEnvVars`] for reading the env-vars set for the runtime.
-pub struct DefaultRuntime<R, T, H, ENV>
+pub struct DefaultRuntime<T, H, ENV>
 where
-    R: LambdaAPIResponse,
-    T: Transport<R>,
+    T: Transport,
     H: EventHandler,
     ENV: RuntimeEnvVars,
 {
     /// An owned container that holds a copy of the env vars and the current invocation data.
-    context: EventContext<ENV, R>,
+    context: EventContext<ENV, T::Response>,
     /// The Lambda API version string.
     version: String,
     /// URI of the Lambda API.
@@ -97,10 +96,9 @@ where
     handler: H,
 }
 
-impl<R, T, H, ENV> DefaultRuntime<R, T, H, ENV>
+impl<T, H, ENV> DefaultRuntime<T, H, ENV>
 where
-    R: LambdaAPIResponse,
-    T: Transport<R>,
+    T: Transport,
     H: EventHandler,
     ENV: RuntimeEnvVars,
 {
@@ -119,7 +117,7 @@ where
         let transport = T::default();
 
         // Initialize the context object
-        let context = EventContext::<ENV, R> {
+        let context = EventContext::<ENV, T::Response> {
             env_vars,
             invo_resp: None,
         };
@@ -134,15 +132,14 @@ where
     }
 }
 
-impl<R, T, H, ENV> LambdaRuntime for DefaultRuntime<R, T, H, ENV>
+impl<T, H, ENV> LambdaRuntime for DefaultRuntime<T, H, ENV>
 where
-    R: LambdaAPIResponse,
-    T: Transport<R>,
+    T: Transport,
     H: EventHandler,
     ENV: RuntimeEnvVars,
 {
     type Handler = H;
-    type Response = R;
+    type Response = T::Response;
 
     fn run(&mut self) {
         // Run the app's initializer and check for errors
