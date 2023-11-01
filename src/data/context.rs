@@ -7,7 +7,7 @@ use crate::data::response::LambdaAPIResponse;
 use crate::error::Error;
 use std::time::Duration;
 
-/// An interface trait that should be implemented by types representing a [Context object]([https://docs.aws.amazon.com/lambda/latest/dg/python-context.html]).
+/// A trait that should be implemented by types representing a [Context object]([https://docs.aws.amazon.com/lambda/latest/dg/python-context.html]).
 ///
 /// The context object exposes constant data from the instance's environment variables,
 /// as well as data - such as request id and execution deadline - that is specific to each event.

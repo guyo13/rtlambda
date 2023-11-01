@@ -13,7 +13,7 @@ pub static AWS_COG_ID: &str = "Lambda-Runtime-Cognito-Identity";
 pub static AWS_FUNC_ERR_TYPE: &str = "Lambda-Runtime-Function-Error-Type";
 
 //Based on [https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html#runtimes-api-next]
-/// An interface trait representing a response from the [AWS Lambda runtime API](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html).
+/// A trait serving as an abstraction of the response from the [AWS Lambda runtime API](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html).
 ///
 /// It encapsulates all of the 4 possible response types defined by the runtime API.
 /// Differentiating between them and correctly reading the response are implementation details.
@@ -23,8 +23,8 @@ pub static AWS_FUNC_ERR_TYPE: &str = "Lambda-Runtime-Function-Error-Type";
 /// for example reading the body from a [ureq::Response](https://docs.rs/ureq/2.4.0/ureq/struct.Response.html#method.into_string) instance
 /// moves the instance, making reading any header (for example request id) or the response's status code impossible.
 ///
-/// A good approach is to implement this trait on a wrapper type that caches the relevant headers and reads the body,
-/// for an example see [`crate::backends::ureq::UreqResponse`].
+/// A good approach is to implement this trait on a wrapper struct that acts as an adapter by caching the relevant headers and reads the response body.
+/// For an example see [`crate::backends::ureq::UreqResponse`].
 pub trait LambdaAPIResponse {
     fn get_body(&self) -> Option<&str>;
     fn get_status_code(&self) -> u16;

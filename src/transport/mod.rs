@@ -6,7 +6,7 @@ use crate::data::response::LambdaAPIResponse;
 use crate::error::Error;
 
 /// A generic trait that is used as an abstraction to the HTTP client library (AKA "Backend")
-/// used to interact with the [runtime API](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html), and the response type returned by that backend.
+/// Used to communicate with the [runtime API](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html).
 pub trait Transport<T: LambdaAPIResponse>: Default {
     // TODO - optimize the headers type
     /// Sends an HTTP GET request to the specified `url` with the optional `body` and `headers`.
