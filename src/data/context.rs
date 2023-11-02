@@ -2,12 +2,13 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
+use crate::data::env::InitializationType;
 use crate::data::env::RuntimeEnvVars;
-use crate::data::response::LambdaAPIResponse;
 use crate::error::Error;
+use std::env::{remove_var, set_var};
 use std::time::Duration;
 
-use super::env::InitializationType;
+static _X_AMZN_TRACE_ID: &str = "_X_AMZN_TRACE_ID";
 
 /// A trait that should be implemented by types representing a [Context object]([https://docs.aws.amazon.com/lambda/latest/dg/python-context.html]).
 ///
@@ -30,12 +31,17 @@ pub trait LambdaContext {
     }
     // Per-invocation data (event-related)
     fn get_deadline(&self) -> Option<Duration>;
+    fn set_deadline(&mut self, dl: Option<Duration>);
     fn invoked_function_arn(&self) -> Option<&str>;
+    fn set_invoked_function_arn(&mut self, arn: Option<&str>);
     fn aws_request_id(&self) -> Option<&str>;
+    fn set_aws_request_id(&mut self, request_id: Option<&str>);
     // Identity and Client context - see [https://docs.aws.amazon.com/lambda/latest/dg/python-context.html]
     // TODO - parse these structures and return a relevant type
     fn cognito_identity(&self) -> Option<&str>;
+    fn set_cognito_identity(&mut self, identity: Option<&str>);
     fn client_context(&self) -> Option<&str>;
+    fn set_client_context(&mut self, ctx: Option<&str>);
     // Per-runtime data (constant accross the lifetime of the runtime, taken from env-vars)
     fn function_name(&self) -> Option<&str>;
     fn function_version(&self) -> Option<&str>;
@@ -44,19 +50,9 @@ pub trait LambdaContext {
     fn log_stream_name(&self) -> Option<&str>;
 }
 
-/// A generic implementation of [`LambdaContext`] that owns instances of types that implement -
-/// [`crate::data::env::RuntimeEnvVars`] for reading environment variables, and
-/// [`crate::data::response::LambdaAPIResponse`] for reading event-related data.
-///
-/// This implementation is used to avoid needlessly copying data that is immutable by definition,
-/// however it is assumed that types implementing [`crate::data::response::LambdaAPIResponse`] can be read from
-/// immutably - which is not the always case with HTTP Response types,
-/// for example [ureq::Response](https://docs.rs/ureq/2.4.0/ureq/struct.Response.html#method.into_string) consumes itself upon reading the response body.
-/// See [`crate::data::response::LambdaAPIResponse`].
-pub struct EventContext<R: LambdaAPIResponse> {
+/// An implementation of both [`RuntimeEnvVars`] and [`LambdaContext`]
+pub struct EventContext {
     pub handler: Option<String>,
-    // This value should be set by the runtime after each next invocation request where a new id is given
-    pub trace_id: Option<String>,
     pub region: Option<String>,
     // Custom runtimes currently don't have this value set as per AWS docs
     pub execution_env: Option<String>,
@@ -74,11 +70,16 @@ pub struct EventContext<R: LambdaAPIResponse> {
     pub task_root: Option<String>,
     pub runtime_dir: Option<String>,
     pub tz: Option<String>,
-    /// An instance of a type implementing [`crate::data::response::LambdaAPIResponse`].
-    pub invo_resp: Option<R>,
+    // These values are set by the runtime after each next invocation request
+    pub trace_id: Option<String>,
+    pub deadline: Option<Duration>,
+    pub function_arn: Option<String>,
+    pub request_id: Option<String>,
+    pub cognito_id: Option<String>,
+    pub client_context: Option<String>,
 }
 
-impl<R: LambdaAPIResponse> Default for EventContext<R> {
+impl Default for EventContext {
     fn default() -> Self {
         use std::env;
         Self {
@@ -106,12 +107,16 @@ impl<R: LambdaAPIResponse> Default for EventContext<R> {
             task_root: env::var("LAMBDA_TASK_ROOT").ok(),
             runtime_dir: env::var("LAMBDA_RUNTIME_DIR").ok(),
             tz: env::var("TZ").ok(),
-            invo_resp: None,
+            deadline: None,
+            function_arn: None,
+            request_id: None,
+            cognito_id: None,
+            client_context: None,
         }
     }
 }
 
-impl<R: LambdaAPIResponse> RuntimeEnvVars for EventContext<R> {
+impl RuntimeEnvVars for EventContext {
     #[inline(always)]
     fn get_handler(&self) -> Option<&str> {
         self.handler.as_deref()
@@ -203,34 +208,42 @@ impl<R: LambdaAPIResponse> RuntimeEnvVars for EventContext<R> {
 
     #[inline]
     fn set_trace_id(&mut self, new_id: Option<&str>) {
-        self.trace_id = new_id.map(|v| v.to_string());
+        // If AWS returns the "Lambda-Runtime-Trace-Id" header, assign its value to the -
+        // "_X_AMZN_TRACE_ID" env var
+        if let Some(req_id) = new_id {
+            set_var(_X_AMZN_TRACE_ID, req_id);
+            self.trace_id = new_id.map(|v| v.to_string());
+        } else {
+            remove_var(_X_AMZN_TRACE_ID);
+            self.trace_id = None;
+        };
     }
 }
 
-impl<R: LambdaAPIResponse> LambdaContext for EventContext<R> {
+impl LambdaContext for EventContext {
     #[inline]
     fn get_deadline(&self) -> Option<Duration> {
-        self.invo_resp.as_ref().unwrap().deadline()
+        self.deadline
     }
 
     #[inline(always)]
     fn invoked_function_arn(&self) -> Option<&str> {
-        self.invo_resp.as_ref().unwrap().invoked_function_arn()
+        self.function_arn.as_deref()
     }
 
     #[inline(always)]
     fn aws_request_id(&self) -> Option<&str> {
-        self.invo_resp.as_ref().unwrap().aws_request_id()
+        self.request_id.as_deref()
     }
 
     #[inline(always)]
     fn cognito_identity(&self) -> Option<&str> {
-        self.invo_resp.as_ref().unwrap().cognito_identity()
+        self.cognito_id.as_deref()
     }
 
     #[inline(always)]
     fn client_context(&self) -> Option<&str> {
-        self.invo_resp.as_ref().unwrap().client_context()
+        self.client_context.as_deref()
     }
 
     #[inline(always)]
@@ -256,5 +269,25 @@ impl<R: LambdaAPIResponse> LambdaContext for EventContext<R> {
     #[inline(always)]
     fn log_stream_name(&self) -> Option<&str> {
         self.get_log_stream_name()
+    }
+
+    fn set_deadline(&mut self, dl: Option<Duration>) {
+        self.deadline = dl;
+    }
+
+    fn set_invoked_function_arn(&mut self, arn: Option<&str>) {
+        self.function_arn = arn.map(|s| s.to_string());
+    }
+
+    fn set_aws_request_id(&mut self, request_id: Option<&str>) {
+        self.request_id = request_id.map(|s| s.to_string());
+    }
+
+    fn set_cognito_identity(&mut self, identity: Option<&str>) {
+        self.cognito_id = identity.map(|s| s.to_string());
+    }
+
+    fn set_client_context(&mut self, ctx: Option<&str>) {
+        self.client_context = ctx.map(|s| s.to_string());
     }
 }

@@ -12,9 +12,6 @@ use crate::error::{Error, CONTAINER_ERR};
 use crate::runtime::event_handler::EventHandler;
 use crate::transport::Transport;
 
-use std::env::set_var;
-use std::ffi::OsStr;
-
 // Already handles any panic inducing errors
 macro_rules! handle_response {
     ($resp:expr) => {
@@ -78,7 +75,7 @@ pub trait LambdaRuntime {
 /// Works by accepting an owned [`EventHandler`] object which is first initialized by the runtime by calling [`EventHandler::initialize`].
 pub struct DefaultRuntime<T: Transport, H: EventHandler> {
     /// An owned container that holds a copy of the env vars and the current invocation data.
-    context: EventContext<T::Response>,
+    context: EventContext,
     /// The Lambda API version string.
     version: String,
     /// URI of the Lambda API.
@@ -92,7 +89,7 @@ pub struct DefaultRuntime<T: Transport, H: EventHandler> {
 impl<T: Transport, H: EventHandler> DefaultRuntime<T, H> {
     pub fn new(version: &str, handler: H) -> Self {
         // Initialize the context object
-        let context = EventContext::<T::Response>::default();
+        let context = EventContext::default();
         // Check for the host and port of the runtime API.
         let api_base = match context.get_runtime_api() {
             Some(v) => v.to_string(),
@@ -143,14 +140,14 @@ where
 
         // Start event processing loop as specified in [https://docs.aws.amazon.com/lambda/latest/dg/runtimes-custom.html]
         loop {
-            // Get the next event in the queue.
+            // Get the next event in the queue and update the context if successful.
             // Failing to get the next event will either panic (on server error) or continue with an error (on client-error codes).
-            self.context.invo_resp = match self.next_invocation() {
+            let invo_resp = match self.next_invocation() {
                 // TODO - perhaps log the error
                 Err(_e) => continue,
-                // TODO - check if RVO optimization kicks in?
-                Ok(resp) => Some(resp),
+                Ok(resp) => resp,
             };
+
             // Vaidate that request id is present in the response.
             let request_id = match self.context.aws_request_id() {
                 Some(rid) => rid,
@@ -164,13 +161,7 @@ where
             // Retrieve the event JSON
             // TODO - deserialize? Currently user code should deserialize inside their handler
             // Both the invocation response and event response are safe to unwrap at this point.
-            let event = self
-                .context
-                .invo_resp
-                .as_ref()
-                .unwrap()
-                .event_response()
-                .unwrap();
+            let event = invo_resp.event_response().unwrap();
 
             // Execute the event handler
             let lambda_output = self.handler.on_event(event, &self.context);
@@ -195,13 +186,14 @@ where
         let resp = self.transport.get(&url, None, None)?;
 
         handle_response!(resp);
-
-        // If AWS returns the "Lambda-Runtime-Trace-Id" header, assign its value to the -
-        // "_X_AMZN_TRACE_ID" env var
-        if let Some(req_id) = resp.trace_id() {
-            set_var(OsStr::new("_X_AMZN_TRACE_ID"), OsStr::new(req_id));
-            self.context.set_trace_id(Some(req_id));
-        };
+        // Update the request context
+        self.context.set_aws_request_id(resp.aws_request_id());
+        self.context.set_client_context(resp.client_context());
+        self.context.set_cognito_identity(resp.cognito_identity());
+        self.context.set_deadline(resp.deadline());
+        self.context
+            .set_invoked_function_arn(resp.invoked_function_arn());
+        self.context.set_trace_id(resp.trace_id());
 
         Ok(resp)
     }
