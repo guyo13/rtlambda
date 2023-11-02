@@ -2,7 +2,7 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::api::{InitializationType, LambdaContext, LambdaEnvVars};
+use crate::api::{InitializationType, LambdaContext, LambdaContextSetter, LambdaEnvVars};
 use std::env::{remove_var, set_var};
 use std::time::Duration;
 
@@ -228,7 +228,9 @@ impl LambdaContext for EventContext {
     fn log_stream_name(&self) -> Option<&str> {
         self.get_log_stream_name()
     }
+}
 
+impl LambdaContextSetter for EventContext {
     fn set_deadline(&mut self, dl: Option<Duration>) {
         self.deadline = dl;
     }
