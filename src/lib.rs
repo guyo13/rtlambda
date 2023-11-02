@@ -29,15 +29,15 @@ pub mod prelude {
 /// Creates a [`crate::runtime::DefaultRuntime`] with the given transport, handler, env, out, err types as well as version and initializer.
 #[macro_export]
 macro_rules! create_runtime {
-    ($transport:ty, $handler:ty, $ver:expr, $ev_handler:expr) => {
-        DefaultRuntime::<$transport, $handler>::new($ver, $ev_handler);
+    ($transport:ty, $ver:expr, $ev_handler:expr) => {
+        DefaultRuntime::<$transport, _>::new($ver, $ev_handler);
     };
 }
 
 /// Creates a [`crate::runtime::DefaultRuntime`] with ureq based HTTP backend and the default implementation of env-vars handling.
 #[macro_export]
 macro_rules! default_runtime {
-    ($handler:ty, $ver:expr, $ev_handler:expr) => {
-        create_runtime!(UreqTransport, $handler, $ver, $ev_handler)
+    ($ev_handler:expr) => {
+        create_runtime!(UreqTransport, LAMBDA_VER, $ev_handler)
     };
 }
