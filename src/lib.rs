@@ -21,7 +21,6 @@ pub static LAMBDA_VER: &str = "2018-06-01";
 pub mod prelude {
     pub use crate::backends::ureq::*;
     pub use crate::data::context::{EventContext, LambdaContext};
-    pub use crate::data::env::LambdaRuntimeEnv;
     pub use crate::runtime::event_handler::EventHandler;
     pub use crate::runtime::{DefaultRuntime, LambdaRuntime};
     pub use crate::LAMBDA_VER;
@@ -30,8 +29,8 @@ pub mod prelude {
 /// Creates a [`crate::runtime::DefaultRuntime`] with the given transport, handler, env, out, err types as well as version and initializer.
 #[macro_export]
 macro_rules! create_runtime {
-    ($transport:ty, $handler:ty, $env:ty, $ver:expr, $ev_handler:expr) => {
-        DefaultRuntime::<$transport, $handler, $env>::new($ver, $ev_handler);
+    ($transport:ty, $handler:ty, $ver:expr, $ev_handler:expr) => {
+        DefaultRuntime::<$transport, $handler>::new($ver, $ev_handler);
     };
 }
 
@@ -39,6 +38,6 @@ macro_rules! create_runtime {
 #[macro_export]
 macro_rules! default_runtime {
     ($handler:ty, $ver:expr, $ev_handler:expr) => {
-        create_runtime!(UreqTransport, $handler, LambdaRuntimeEnv, $ver, $ev_handler)
+        create_runtime!(UreqTransport, $handler, $ver, $ev_handler)
     };
 }

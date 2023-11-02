@@ -49,7 +49,7 @@ impl EventHandler for EchoEventHandler {
 fn main() {
     // Create a runtime instance and run its loop.
     // This is the equivalent of:
-    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, EchoEventHandler, LambdaRuntimeEnv>::new(LAMBDA_VER, EchoEventHandler {});
+    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, EchoEventHandler>::new(LAMBDA_VER, EchoEventHandler {});
     let mut runtime = default_runtime!(EchoEventHandler, LAMBDA_VER, EchoEventHandler {});
 
     runtime.run();

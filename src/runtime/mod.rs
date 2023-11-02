@@ -47,45 +47,38 @@ macro_rules! format_version_string {
 pub trait LambdaRuntime {
     /// Defines the type of the event handler executed by the runtime in each invocation.
     type Handler: EventHandler;
-    /// Defines the Response type. See `[LambdaAPIResponse]`.
-    type Response: LambdaAPIResponse;
+    /// Defines the Transport type. See `[crate::transport::Transport]`.
+    type Transport: crate::transport::Transport;
     /// Used to fetch the next event from the Lambda service.
-    fn next_invocation(&mut self) -> Result<Self::Response, Error>;
+    fn next_invocation(&mut self) -> Result<<Self::Transport as Transport>::Response, Error>;
     /// Sends back a JSON formatted response to the Lambda service, after processing an event.
     fn invocation_response(
         &self,
         request_id: &str,
         response: &<Self::Handler as EventHandler>::Output,
-    ) -> Result<Self::Response, Error>;
+    ) -> Result<<Self::Transport as Transport>::Response, Error>;
     /// Used to report an error during initialization to the Lambda service.
     fn initialization_error(
         &self,
         error_type: Option<&str>,
         error_req: Option<&str>,
-    ) -> Result<Self::Response, Error>;
+    ) -> Result<<Self::Transport as Transport>::Response, Error>;
     /// Used to report an error during function invocation to the Lambda service.
     fn invocation_error(
         &self,
         request_id: &str,
         error_type: Option<&str>,
         error_req: Option<&str>,
-    ) -> Result<Self::Response, Error>;
+    ) -> Result<<Self::Transport as Transport>::Response, Error>;
     /// Implements the runtime loop logic.
     fn run(&mut self);
 }
 
 /// The default generic implementation of the [`LambdaRuntime`] interface.
 /// Works by accepting an owned [`EventHandler`] object which is first initialized by the runtime by calling [`EventHandler::initialize`].
-///
-/// The `ENV` type parameter defines the implementation of [`crate::data::env::RuntimeEnvVars`] for reading the env-vars set for the runtime.
-pub struct DefaultRuntime<T, H, ENV>
-where
-    T: Transport,
-    H: EventHandler,
-    ENV: RuntimeEnvVars,
-{
+pub struct DefaultRuntime<T: Transport, H: EventHandler> {
     /// An owned container that holds a copy of the env vars and the current invocation data.
-    context: EventContext<ENV, T::Response>,
+    context: EventContext<T::Response>,
     /// The Lambda API version string.
     version: String,
     /// URI of the Lambda API.
@@ -96,16 +89,12 @@ where
     handler: H,
 }
 
-impl<T, H, ENV> DefaultRuntime<T, H, ENV>
-where
-    T: Transport,
-    H: EventHandler,
-    ENV: RuntimeEnvVars,
-{
+impl<T: Transport, H: EventHandler> DefaultRuntime<T, H> {
     pub fn new(version: &str, handler: H) -> Self {
-        // Initialize default env vars and check for the host and port of the runtime API.
-        let env_vars = ENV::default();
-        let api_base = match env_vars.get_runtime_api() {
+        // Initialize the context object
+        let context = EventContext::<T::Response>::default();
+        // Check for the host and port of the runtime API.
+        let api_base = match context.get_runtime_api() {
             Some(v) => v.to_string(),
             None => panic!("Failed getting API base URL from env vars"),
         };
@@ -115,12 +104,6 @@ where
 
         // Start the transport layer object
         let transport = T::default();
-
-        // Initialize the context object
-        let context = EventContext::<ENV, T::Response> {
-            env_vars,
-            invo_resp: None,
-        };
 
         Self {
             context,
@@ -132,29 +115,28 @@ where
     }
 }
 
-impl<T, H, ENV> LambdaRuntime for DefaultRuntime<T, H, ENV>
+impl<T, H> LambdaRuntime for DefaultRuntime<T, H>
 where
     T: Transport,
     H: EventHandler,
-    ENV: RuntimeEnvVars,
 {
     type Handler = H;
-    type Response = T::Response;
+    type Transport = T;
 
     fn run(&mut self) {
         // Run the app's initializer and check for errors
         let init_result = self.handler.initialize();
         if let Err(init_err) = init_result {
-            // Try reporting to the Lambda service if there is an error during initialization
+            // Report any initialization error to the Lambda service
             // TODO: Take error type and request from ERR
-            match self.initialization_error(Some("Runtime.InitError"), None) {
-                Ok(r) => r,
-                // If an error occurs during reporting the previous error, panic.
-                Err(err) => panic!(
+            // If an error occurs during reporting the init error, panic.
+            if let Err(err) = self.initialization_error(Some("Runtime.InitError"), None) {
+                panic!(
                     "Failed to report initialization error. Error: {}, AWS Error: {}",
                     &init_err, err
-                ),
+                );
             };
+
             // After reporting an init error just panic.
             panic!("Initialization Error: {}", &init_err);
         }
@@ -205,7 +187,7 @@ where
         }
     }
 
-    fn next_invocation(&mut self) -> Result<Self::Response, Error> {
+    fn next_invocation(&mut self) -> Result<<Self::Transport as Transport>::Response, Error> {
         let url = format!(
             "http://{}/{}/runtime/invocation/next",
             self.api_base, self.version
@@ -218,7 +200,7 @@ where
         // "_X_AMZN_TRACE_ID" env var
         if let Some(req_id) = resp.trace_id() {
             set_var(OsStr::new("_X_AMZN_TRACE_ID"), OsStr::new(req_id));
-            self.context.env_vars.set_trace_id(Some(req_id));
+            self.context.set_trace_id(Some(req_id));
         };
 
         Ok(resp)
@@ -228,7 +210,7 @@ where
         &self,
         request_id: &str,
         response: &<Self::Handler as EventHandler>::Output,
-    ) -> Result<Self::Response, Error> {
+    ) -> Result<<Self::Transport as Transport>::Response, Error> {
         let url = format!(
             "http://{}/{}/runtime/invocation/{}/response",
             self.api_base, self.version, request_id
@@ -254,7 +236,7 @@ where
         &self,
         error_type: Option<&str>,
         error_req: Option<&str>,
-    ) -> Result<Self::Response, Error> {
+    ) -> Result<<Self::Transport as Transport>::Response, Error> {
         let url = format!(
             "http://{}/{}/runtime/init/error",
             self.api_base, self.version
@@ -273,7 +255,7 @@ where
         request_id: &str,
         error_type: Option<&str>,
         error_req: Option<&str>,
-    ) -> Result<Self::Response, Error> {
+    ) -> Result<<Self::Transport as Transport>::Response, Error> {
         let url = format!(
             "http://{}/{}/runtime/invocation/{}/error",
             self.api_base, self.version, request_id
