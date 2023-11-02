@@ -2,13 +2,13 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::api::{InitializationType, LambdaContext, RuntimeEnvVars};
+use crate::api::{InitializationType, LambdaContext, LambdaEnvVars};
 use std::env::{remove_var, set_var};
 use std::time::Duration;
 
 static _X_AMZN_TRACE_ID: &str = "_X_AMZN_TRACE_ID";
 
-/// An implementation of both [`RuntimeEnvVars`] and [`LambdaContext`]
+/// An implementation of both [`LambdaEnvVars`] and [`LambdaContext`]
 pub struct EventContext {
     pub handler: Option<String>,
     pub region: Option<String>,
@@ -74,7 +74,7 @@ impl Default for EventContext {
     }
 }
 
-impl RuntimeEnvVars for EventContext {
+impl LambdaEnvVars for EventContext {
     #[inline(always)]
     fn get_handler(&self) -> Option<&str> {
         self.handler.as_deref()

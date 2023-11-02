@@ -27,7 +27,7 @@ impl InitializationType {
 /// An interface trait for reading the environment variables set by the AWS Lambda service.
 ///
 /// Based on - [Defined runtime environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime).
-pub trait RuntimeEnvVars: Default {
+pub trait LambdaEnvVars: Default {
     fn get_handler(&self) -> Option<&str>;
     fn get_region(&self) -> Option<&str>;
     fn get_trace_id(&self) -> Option<&str>;
