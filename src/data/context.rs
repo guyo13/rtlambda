@@ -2,9 +2,7 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::api::LambdaContext;
-use crate::data::env::InitializationType;
-use crate::data::env::RuntimeEnvVars;
+use crate::api::{InitializationType, LambdaContext, RuntimeEnvVars};
 use std::env::{remove_var, set_var};
 use std::time::Duration;
 
