@@ -5,7 +5,8 @@
 /// Defines the interface an event handler should implement.
 pub mod event_handler;
 
-use crate::data::context::{EventContext, LambdaContext};
+use crate::api::LambdaContext;
+use crate::data::context::EventContext;
 use crate::data::env::RuntimeEnvVars;
 use crate::data::response::{LambdaAPIResponse, AWS_FUNC_ERR_TYPE};
 use crate::error::{Error, CONTAINER_ERR};

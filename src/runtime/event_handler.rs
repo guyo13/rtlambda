@@ -2,7 +2,7 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::data::context::LambdaContext;
+use crate::api::LambdaContext;
 
 use serde::Serialize;
 use std::fmt::Display;
