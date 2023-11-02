@@ -39,12 +39,6 @@ macro_rules! create_runtime {
 #[macro_export]
 macro_rules! default_runtime {
     ($handler:ty, $ver:expr, $ev_handler:expr) => {
-        create_runtime!(
-            UreqTransport,
-            $handler,
-            LambdaRuntimeEnv,
-            $ver,
-            $ev_handler
-        )
+        create_runtime!(UreqTransport, $handler, LambdaRuntimeEnv, $ver, $ev_handler)
     };
 }
