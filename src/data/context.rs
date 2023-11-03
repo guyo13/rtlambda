@@ -12,6 +12,7 @@ static _X_AMZN_TRACE_ID: &str = "_X_AMZN_TRACE_ID";
 pub struct EventContext {
     pub handler: Option<String>,
     pub region: Option<String>,
+    pub default_region: Option<String>,
     // Custom runtimes currently don't have this value set as per AWS docs
     pub execution_env: Option<String>,
     pub function_name: Option<String>,
@@ -42,6 +43,7 @@ impl Default for EventContext {
         use std::env;
         Self {
             handler: env::var("_HANDLER").ok(),
+            default_region: env::var("AWS_DEFAULT_REGION").ok(),
             region: env::var("AWS_REGION").ok(),
             trace_id: None,
             execution_env: env::var("AWS_EXECUTION_ENV").ok(),
@@ -76,17 +78,22 @@ impl Default for EventContext {
 
 impl LambdaEnvVars for EventContext {
     #[inline(always)]
-    fn get_handler(&self) -> Option<&str> {
+    fn get_handler_location(&self) -> Option<&str> {
         self.handler.as_deref()
     }
 
     #[inline(always)]
-    fn get_region(&self) -> Option<&str> {
+    fn get_aws_default_region(&self) -> Option<&str> {
+        self.default_region.as_deref()
+    }
+
+    #[inline(always)]
+    fn get_aws_region(&self) -> Option<&str> {
         self.region.as_deref()
     }
 
     #[inline(always)]
-    fn get_trace_id(&self) -> Option<&str> {
+    fn get_x_ray_tracing_id(&self) -> Option<&str> {
         self.trace_id.as_deref()
     }
 
@@ -96,31 +103,31 @@ impl LambdaEnvVars for EventContext {
     }
 
     #[inline(always)]
-    fn get_function_name(&self) -> Option<&str> {
+    fn get_lambda_function_name(&self) -> Option<&str> {
         self.function_name.as_deref()
     }
 
     #[inline(always)]
-    fn get_function_memory_size(&self) -> Option<usize> {
+    fn get_lambda_function_memory_size(&self) -> Option<usize> {
         self.function_memory_size
     }
 
     #[inline(always)]
-    fn get_function_version(&self) -> Option<&str> {
+    fn get_lambda_function_version(&self) -> Option<&str> {
         self.function_version.as_deref()
     }
 
     #[inline(always)]
-    fn get_initialization_type(&self) -> InitializationType {
+    fn get_lambda_initialization_type(&self) -> InitializationType {
         self.initialization_type
     }
     #[inline(always)]
-    fn get_log_group_name(&self) -> Option<&str> {
+    fn get_lambda_log_group_name(&self) -> Option<&str> {
         self.log_group_name.as_deref()
     }
 
     #[inline(always)]
-    fn get_log_stream_name(&self) -> Option<&str> {
+    fn get_lambda_log_stream_name(&self) -> Option<&str> {
         self.log_stream_name.as_deref()
     }
 
@@ -145,17 +152,17 @@ impl LambdaEnvVars for EventContext {
     }
 
     #[inline(always)]
-    fn get_runtime_api(&self) -> Option<&str> {
+    fn get_lambda_runtime_api(&self) -> Option<&str> {
         self.runtime_api.as_deref()
     }
 
     #[inline(always)]
-    fn get_task_root(&self) -> Option<&str> {
+    fn get_lambda_task_root(&self) -> Option<&str> {
         self.task_root.as_deref()
     }
 
     #[inline(always)]
-    fn get_runtime_dir(&self) -> Option<&str> {
+    fn get_lambda_runtime_dir(&self) -> Option<&str> {
         self.runtime_dir.as_deref()
     }
 
@@ -185,48 +192,23 @@ impl LambdaContext for EventContext {
     }
 
     #[inline(always)]
-    fn invoked_function_arn(&self) -> Option<&str> {
+    fn get_invoked_function_arn(&self) -> Option<&str> {
         self.function_arn.as_deref()
     }
 
     #[inline(always)]
-    fn aws_request_id(&self) -> Option<&str> {
+    fn get_aws_request_id(&self) -> Option<&str> {
         self.request_id.as_deref()
     }
 
     #[inline(always)]
-    fn cognito_identity(&self) -> Option<&str> {
+    fn get_cognito_identity(&self) -> Option<&str> {
         self.cognito_id.as_deref()
     }
 
     #[inline(always)]
-    fn client_context(&self) -> Option<&str> {
+    fn get_client_context(&self) -> Option<&str> {
         self.client_context.as_deref()
-    }
-
-    #[inline(always)]
-    fn function_name(&self) -> Option<&str> {
-        self.get_function_name()
-    }
-
-    #[inline(always)]
-    fn function_version(&self) -> Option<&str> {
-        self.get_function_version()
-    }
-
-    #[inline(always)]
-    fn memory_limit_in_mb(&self) -> Option<usize> {
-        self.get_function_memory_size()
-    }
-
-    #[inline(always)]
-    fn log_group_name(&self) -> Option<&str> {
-        self.get_log_group_name()
-    }
-
-    #[inline(always)]
-    fn log_stream_name(&self) -> Option<&str> {
-        self.get_log_stream_name()
     }
 }
 

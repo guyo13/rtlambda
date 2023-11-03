@@ -32,7 +32,7 @@ impl EventHandler for EchoEventHandler {
         context: &Ctx,
     ) -> Result<Self::Output, Self::Error> {
         // Get the aws request id
-        let req_id = context.aws_request_id().unwrap();
+        let req_id = context.get_aws_request_id().unwrap();
 
         if event == "\"\"" {
             return Err(format!("Empty input, nothing to echo."));

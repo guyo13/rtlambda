@@ -24,27 +24,28 @@ impl InitializationType {
     }
 }
 
-/// An interface trait for reading the environment variables set by the AWS Lambda service.
+/// An interface for reading the environment variables set by the AWS Lambda service.
 ///
 /// Based on - [Defined runtime environment variables](https://docs.aws.amazon.com/lambda/latest/dg/configuration-envvars.html#configuration-envvars-runtime).
 pub trait LambdaEnvVars: Default {
-    fn get_handler(&self) -> Option<&str>;
-    fn get_region(&self) -> Option<&str>;
-    fn get_trace_id(&self) -> Option<&str>;
+    fn get_handler_location(&self) -> Option<&str>;
+    fn get_x_ray_tracing_id(&self) -> Option<&str>;
+    fn get_aws_default_region(&self) -> Option<&str>;
+    fn get_aws_region(&self) -> Option<&str>;
     fn get_execution_env(&self) -> Option<&str>;
-    fn get_function_name(&self) -> Option<&str>;
-    fn get_function_memory_size(&self) -> Option<usize>;
-    fn get_function_version(&self) -> Option<&str>;
-    fn get_initialization_type(&self) -> InitializationType;
-    fn get_log_group_name(&self) -> Option<&str>;
-    fn get_log_stream_name(&self) -> Option<&str>;
+    fn get_lambda_function_name(&self) -> Option<&str>;
+    fn get_lambda_function_memory_size(&self) -> Option<usize>;
+    fn get_lambda_function_version(&self) -> Option<&str>;
+    fn get_lambda_initialization_type(&self) -> InitializationType;
+    fn get_lambda_log_group_name(&self) -> Option<&str>;
+    fn get_lambda_log_stream_name(&self) -> Option<&str>;
     fn get_access_key(&self) -> Option<&str>;
     fn get_access_key_id(&self) -> Option<&str>;
     fn get_secret_access_key(&self) -> Option<&str>;
     fn get_session_token(&self) -> Option<&str>;
-    fn get_runtime_api(&self) -> Option<&str>;
-    fn get_task_root(&self) -> Option<&str>;
-    fn get_runtime_dir(&self) -> Option<&str>;
+    fn get_lambda_runtime_api(&self) -> Option<&str>;
+    fn get_lambda_task_root(&self) -> Option<&str>;
+    fn get_lambda_runtime_dir(&self) -> Option<&str>;
     fn get_tz(&self) -> Option<&str>;
     /// Returns the string value of an env-var `var_name` wrapped in an [`Option`],
     /// or `None` if the env-var is not set or the [`std::env::var`] function returns an error.

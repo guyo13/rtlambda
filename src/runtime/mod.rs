@@ -91,7 +91,7 @@ impl<T: Transport, H: EventHandler> DefaultRuntime<T, H> {
         // Initialize the context object
         let context = EventContext::default();
         // Check for the host and port of the runtime API.
-        let api_base = match context.get_runtime_api() {
+        let api_base = match context.get_lambda_runtime_api() {
             Some(v) => v.to_string(),
             None => panic!("Failed getting API base URL from env vars"),
         };
@@ -149,7 +149,7 @@ where
             };
 
             // Vaidate that request id is present in the response.
-            let request_id = match self.context.aws_request_id() {
+            let request_id = match self.context.get_aws_request_id() {
                 Some(rid) => rid,
                 None => {
                     // TODO - figure out what we'd like to do with the result returned from success/client-err api responses
