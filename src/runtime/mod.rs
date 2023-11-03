@@ -193,7 +193,7 @@ where
         self.context.set_deadline(resp.deadline());
         self.context
             .set_invoked_function_arn(resp.invoked_function_arn());
-        self.context.set_trace_id(resp.trace_id());
+        self.context.set_x_ray_tracing_id(resp.trace_id());
 
         Ok(resp)
     }

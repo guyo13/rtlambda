@@ -176,7 +176,7 @@ impl LambdaEnvVars for EventContext {
 
 impl LambdaEnvSetter for EventContext {
     #[inline]
-    fn set_trace_id(&mut self, new_id: Option<&str>) {
+    fn set_x_ray_tracing_id(&mut self, new_id: Option<&str>) {
         // If AWS returns the "Lambda-Runtime-Trace-Id" header, assign its value to the -
         // "_X_AMZN_TRACE_ID" env var
         if let Some(req_id) = new_id {

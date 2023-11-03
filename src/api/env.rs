@@ -57,5 +57,5 @@ pub trait LambdaEnvVars: Default {
 
 pub trait LambdaEnvSetter {
     /// Signals that the previous tracing id has changed as a result of a new incoming event.
-    fn set_trace_id(&mut self, new_id: Option<&str>);
+    fn set_x_ray_tracing_id(&mut self, new_id: Option<&str>);
 }
