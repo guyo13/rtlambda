@@ -53,6 +53,9 @@ pub trait LambdaEnvVars: Default {
         use std::env;
         env::var(var_name).ok()
     }
+}
+
+pub trait LambdaEnvSetter {
     /// Signals that the previous tracing id has changed as a result of a new incoming event.
     fn set_trace_id(&mut self, new_id: Option<&str>);
 }

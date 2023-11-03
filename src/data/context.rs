@@ -2,7 +2,9 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::api::{InitializationType, LambdaContext, LambdaContextSetter, LambdaEnvVars};
+use crate::api::{
+    InitializationType, LambdaContext, LambdaContextSetter, LambdaEnvSetter, LambdaEnvVars,
+};
 use std::env::{remove_var, set_var};
 use std::time::Duration;
 
@@ -170,7 +172,9 @@ impl LambdaEnvVars for EventContext {
     fn get_tz(&self) -> Option<&str> {
         self.tz.as_deref()
     }
+}
 
+impl LambdaEnvSetter for EventContext {
     #[inline]
     fn set_trace_id(&mut self, new_id: Option<&str>) {
         // If AWS returns the "Lambda-Runtime-Trace-Id" header, assign its value to the -
