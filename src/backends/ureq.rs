@@ -12,111 +12,70 @@ use ureq::Response;
 
 use std::time::Duration;
 
-macro_rules! copy_str_header {
-    ($resp:expr, $header:expr) => {
-        $resp.header($header).map(|v| v.to_string())
-    };
-}
-
-/// A wrapper that processes a [ureq::Response] and implements the [`crate::data::response::LambdaAPIResponse`] trait.
+/// A wrapper that processes a [ureq::Response] and implements the [`crate::api::LambdaAPIResponse`] trait.
 pub struct UreqResponse {
-    body: Option<String>,
-    status: u16,
-    _request_id: String,
-    _deadline: Option<Duration>,
-    _arn: Option<String>,
-    _trace_id: Option<String>,
-    _cognito_id: Option<String>,
-    _client_context: Option<String>,
+    resp: ureq::Response,
 }
 
 impl UreqResponse {
     /// A constructor that consumes a [ureq::Response] by copying the relevant headers and reading the request body.
-    fn from_response(resp: Response) -> Result<Self, Error> {
-        // Copy status
-        let status = resp.status();
-
-        // Copy AWS headers
-        let _request_id = match resp.header(AWS_REQ_ID) {
-            Some(v) => v.to_string(),
-            None => {
-                return Err(Error::new(
-                    "Missing Lambda-Runtime-Aws-Request-Id header".to_string(),
-                ))
-            }
-        };
-
-        // Parse milliseconds to Duration
-        let _deadline = match resp.header(AWS_DEADLINE_MS) {
-            Some(ms) => match ms.parse::<u64>() {
-                Ok(val) => Some(Duration::from_millis(val)),
-                Err(_) => None,
-            },
-            None => None,
-        };
-        let _arn = copy_str_header!(resp, AWS_FUNC_ARN);
-        let _trace_id = copy_str_header!(resp, AWS_TRACE_ID);
-        let _cognito_id = copy_str_header!(resp, AWS_COG_ID);
-        let _client_context = copy_str_header!(resp, AWS_CLIENT_CTX);
-
-        // Consume the response into a string
-        let body = match resp.into_string() {
-            Ok(data) => Some(data),
-            Err(err) => return Err(Error::new(format!("{}", err))),
-        };
-
-        Ok(Self {
-            body,
-            status,
-            _request_id,
-            _deadline,
-            _arn,
-            _trace_id,
-            _cognito_id,
-            _client_context,
-        })
+    fn from_response(resp: ureq::Response) -> Result<Self, Error> {
+        Ok(Self { resp })
     }
 }
 
 impl LambdaAPIResponse for UreqResponse {
     #[inline(always)]
-    fn get_body(&self) -> Option<&str> {
-        self.body.as_deref()
+    fn get_body(self) -> Result<String, Error> {
+        match self.resp.into_string() {
+            Ok(data) => Ok(data),
+            Err(err) => Err(Error::new(format!("{}", err))),
+        }
     }
 
     #[inline(always)]
     fn get_status_code(&self) -> u16 {
-        self.status
+        self.resp.status()
     }
 
     #[inline]
-    fn aws_request_id(&self) -> Option<&str> {
-        Some(&self._request_id)
+    fn get_aws_request_id(&self) -> Option<&str> {
+        self.resp.header(AWS_REQ_ID)
     }
+
     #[inline]
-    fn deadline(&self) -> Option<Duration> {
-        self._deadline
+    fn get_deadline(&self) -> Option<u64> {
+        match self.resp.header(AWS_DEADLINE_MS) {
+            Some(ms) => match ms.parse::<u64>() {
+                Ok(val) => Some(val),
+                Err(_) => None,
+            },
+            None => None,
+        }
     }
+
     #[inline]
-    fn invoked_function_arn(&self) -> Option<&str> {
-        self._arn.as_deref()
+    fn get_invoked_function_arn(&self) -> Option<&str> {
+        self.resp.header(AWS_FUNC_ARN)
     }
+
     #[inline]
-    fn trace_id(&self) -> Option<&str> {
-        self._trace_id.as_deref()
+    fn get_x_ray_tracing_id(&self) -> Option<&str> {
+        self.resp.header(AWS_TRACE_ID)
     }
+
     #[inline]
-    fn client_context(&self) -> Option<&str> {
-        self._client_context.as_deref()
+    fn get_client_context(&self) -> Option<&str> {
+        self.resp.header(AWS_CLIENT_CTX)
     }
+
     #[inline]
-    fn cognito_identity(&self) -> Option<&str> {
-        self._cognito_id.as_deref()
+    fn get_cognito_identity(&self) -> Option<&str> {
+        self.resp.header(AWS_COG_ID)
     }
 }
 
 /// Wraps a [`ureq::Agent`] to implement the [`crate::transport::Transport`] trait.
-/// Contains a specialized implementation for [`UreqResponse`] type parameter.
 ///
 /// AWS runtime instructs the implementation to disable timeout on the next invocation call.
 /// This implementation achieves this by creating a [`ureq::Agent`] with 1 day in seconds of timeout.
@@ -124,13 +83,15 @@ pub struct UreqTransport {
     agent: Agent,
 }
 
-impl UreqTransport {
+impl Default for UreqTransport {
     /// Creates a new transport objects with an underlying [ureq::Agent] that will (practically) not time out.
-    fn new() -> Self {
+    fn default() -> Self {
         let agent = ureq::builder().timeout(Duration::from_secs(86400)).build();
         UreqTransport { agent }
     }
+}
 
+impl UreqTransport {
     /// Sends a request using the underlying agent.
     fn request(
         &self,
@@ -153,12 +114,6 @@ impl UreqTransport {
                 .map_err(|err| Error::new(format!("{}", err)));
         }
         req.call().map_err(|err| Error::new(format!("{}", err)))
-    }
-}
-
-impl Default for UreqTransport {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

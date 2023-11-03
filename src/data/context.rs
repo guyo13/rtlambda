@@ -28,7 +28,6 @@ static LAMBDA_TASK_ROOT: &str = "LAMBDA_TASK_ROOT";
 static LAMBDA_RUNTIME_DIR: &str = "LAMBDA_RUNTIME_DIR";
 static TZ: &str = "TZ";
 
-
 /// An implementation of [`LambdaContext`], [`LambdaContextSetter`] and [`LambdaEnvSetter`].
 pub struct EventContext {
     pub handler: Option<String>,

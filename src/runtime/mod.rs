@@ -2,6 +2,8 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
+use std::time::Duration;
+
 use crate::api::{
     EventHandler, LambdaAPIResponse, LambdaContext, LambdaContextSetter, LambdaEnvSetter,
     LambdaEnvVars, LambdaRuntime, Transport, AWS_FUNC_ERR_TYPE,
@@ -15,7 +17,9 @@ macro_rules! handle_response {
         let status_code = $resp.get_status_code();
         match status_code {
             400..=499 => {
-                let err = $resp.error_response().or(Some("")).unwrap();
+                let err = $resp
+                    .get_body()
+                    .unwrap_or_else(|_| String::with_capacity(0));
                 return Err(Error::new(format!(
                     "Client error ({}). ErrorResponse: {}",
                     status_code, err
@@ -91,7 +95,8 @@ where
         let init_result = self.handler.initialize();
         if let Err(init_err) = init_result {
             // Report any initialization error to the Lambda service
-            // TODO: Take error type and request from ERR
+            // TODO: Serialize the init_err and the error type into JSON as specified in
+            // https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html#runtimes-api-initerror
             // If an error occurs during reporting the init error, panic.
             if let Err(err) = self.initialization_error(Some("Runtime.InitError"), None) {
                 panic!(
@@ -108,34 +113,25 @@ where
         loop {
             // Get the next event in the queue and update the context if successful.
             // Failing to get the next event will either panic (on server error) or continue with an error (on client-error codes).
-            let invo_resp = match self.next_invocation() {
+            let next_invo = match self.next_invocation() {
                 // TODO - perhaps log the error
                 Err(_e) => continue,
                 Ok(resp) => resp,
             };
 
-            // Vaidate that request id is present in the response.
-            let request_id = match self.context.get_aws_request_id() {
-                Some(rid) => rid,
-                None => {
-                    // TODO - figure out what we'd like to do with the result returned from success/client-err api responses
-                    let _ = self.initialization_error(Some("Runtime.MissingRequestId"), None);
-                    continue;
-                }
-            };
-
             // Retrieve the event JSON
-            // TODO - deserialize? Currently user code should deserialize inside their handler
-            // Both the invocation response and event response are safe to unwrap at this point.
-            let event = invo_resp.event_response().unwrap();
+            // The response body is safe to unwrap at this point.
+            let event = next_invo.get_body().unwrap();
 
             // Execute the event handler
-            let lambda_output = self.handler.on_event(event, &self.context);
+            // TODO - pass the event an an owned String
+            let lambda_output = self.handler.on_event(&event, &self.context);
+            let request_id = self.context.get_aws_request_id().unwrap();
 
             // TODO - figure out what we'd like to do with the result returned from success/client-err api responses (e.g: log, run a user defined callback...)
             let _ = match lambda_output {
                 Ok(out) => self.invocation_response(request_id, &out),
-                // TODO - pass an ErrorRequest json
+                // TODO - pass an ErrorRequest json - https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html#runtimes-api-invokeerror
                 Err(err) => {
                     let _err = format!("{}", &err);
                     self.invocation_error(request_id, Some(&_err), Some(&_err))
@@ -145,22 +141,33 @@ where
     }
 
     fn next_invocation(&mut self) -> Result<<Self::Transport as Transport>::Response, Error> {
+        // TODO - cache this string
         let url = format!(
             "http://{}/{}/runtime/invocation/next",
             self.api_base, self.version
         );
         let resp = self.transport.get(&url, None, None)?;
-
         handle_response!(resp);
-        // Update the request context
-        self.context.set_aws_request_id(resp.aws_request_id());
-        self.context.set_client_context(resp.client_context());
-        self.context.set_cognito_identity(resp.cognito_identity());
-        self.context.set_deadline(resp.deadline());
-        self.context
-            .set_invoked_function_arn(resp.invoked_function_arn());
-        self.context.set_x_ray_tracing_id(resp.trace_id());
 
+        // Update the request context
+        self.context.set_aws_request_id(resp.get_aws_request_id());
+        self.context.set_client_context(resp.get_client_context());
+        self.context
+            .set_cognito_identity(resp.get_cognito_identity());
+        self.context
+            .set_deadline(resp.get_deadline().map(Duration::from_millis));
+        self.context
+            .set_invoked_function_arn(resp.get_invoked_function_arn());
+        self.context
+            .set_x_ray_tracing_id(resp.get_x_ray_tracing_id());
+
+        // Vaidate that request id is present in the response. If not report to Lambda.
+        if self.context.get_aws_request_id().is_none() {
+            // TODO - figure out what we'd like to do with the result returned from success/client-err api responses
+            let _ = self.initialization_error(Some("Runtime.MissingRequestId"), None);
+            // TODO - return None - requires modifying the function signature
+            return Err(Error::empty());
+        }
         Ok(resp)
     }
 
@@ -184,7 +191,6 @@ where
             }
         };
         let resp = self.transport.post(&url, Some(&serialized), None)?;
-
         handle_response!(resp);
 
         Ok(resp)
@@ -200,9 +206,7 @@ where
             self.api_base, self.version
         );
         let headers = error_type.map(|et| (vec![AWS_FUNC_ERR_TYPE], vec![et]));
-
         let resp = self.transport.post(&url, error_req, headers)?;
-
         handle_response!(resp);
 
         Ok(resp)
@@ -219,9 +223,7 @@ where
             self.api_base, self.version, request_id
         );
         let headers = error_type.map(|et| (vec![AWS_FUNC_ERR_TYPE], vec![et]));
-
         let resp = self.transport.post(&url, error_req, headers)?;
-
         handle_response!(resp);
 
         Ok(resp)

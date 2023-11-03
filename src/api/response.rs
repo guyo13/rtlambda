@@ -2,7 +2,7 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use std::time::Duration;
+use crate::error::*;
 
 pub static AWS_REQ_ID: &str = "Lambda-Runtime-Aws-Request-Id";
 pub static AWS_DEADLINE_MS: &str = "Lambda-Runtime-Deadline-Ms";
@@ -26,36 +26,15 @@ pub static AWS_FUNC_ERR_TYPE: &str = "Lambda-Runtime-Function-Error-Type";
 /// A good approach is to implement this trait on a wrapper struct that acts as an adapter by caching the relevant headers and reads the response body.
 /// For an example see [`crate::backends::ureq::UreqResponse`].
 pub trait LambdaAPIResponse {
-    fn get_body(&self) -> Option<&str>;
-    fn get_status_code(&self) -> u16;
-    fn aws_request_id(&self) -> Option<&str>;
-    fn deadline(&self) -> Option<Duration>;
-    fn invoked_function_arn(&self) -> Option<&str>;
-    fn trace_id(&self) -> Option<&str>;
-    fn client_context(&self) -> Option<&str>;
-    fn cognito_identity(&self) -> Option<&str>;
-
     // TODO: find out whether lambda might send a non-UTF-8 encoded json event and change signature if needed
-    fn event_response(&self) -> Option<&str> {
-        match self.is_success() {
-            true => self.get_body(),
-            false => None,
-        }
-    }
-
-    fn error_response(&self) -> Option<&str> {
-        match self.is_client_err() {
-            true => self.get_body(),
-            false => None,
-        }
-    }
-
-    #[inline]
-    fn status_response(&self) -> Option<&str> {
-        // TODO - only return if the response type is defined to return a StatusResponse object
-        self.event_response()
-    }
-
+    fn get_body(self) -> Result<String, Error>;
+    fn get_status_code(&self) -> u16;
+    fn get_aws_request_id(&self) -> Option<&str>;
+    fn get_deadline(&self) -> Option<u64>;
+    fn get_invoked_function_arn(&self) -> Option<&str>;
+    fn get_x_ray_tracing_id(&self) -> Option<&str>;
+    fn get_client_context(&self) -> Option<&str>;
+    fn get_cognito_identity(&self) -> Option<&str>;
     fn is_success(&self) -> bool {
         matches!(self.get_status_code(), 200..=299)
     }
