@@ -9,6 +9,25 @@ use std::env::{remove_var, set_var};
 use std::time::Duration;
 
 static _X_AMZN_TRACE_ID: &str = "_X_AMZN_TRACE_ID";
+static _HANDLER: &str = "_HANDLER";
+static AWS_DEFAULT_REGION: &str = "AWS_DEFAULT_REGION";
+static AWS_REGION: &str = "AWS_REGION";
+static AWS_EXECUTION_ENV: &str = "AWS_EXECUTION_ENV";
+static AWS_LAMBDA_FUNCTION_NAME: &str = "AWS_LAMBDA_FUNCTION_NAME";
+static AWS_LAMBDA_FUNCTION_MEMORY_SIZE: &str = "AWS_LAMBDA_FUNCTION_MEMORY_SIZE";
+static AWS_LAMBDA_FUNCTION_VERSION: &str = "AWS_LAMBDA_FUNCTION_VERSION";
+static AWS_LAMBDA_INITIALIZATION_TYPE: &str = "AWS_LAMBDA_INITIALIZATION_TYPE";
+static AWS_LAMBDA_LOG_GROUP_NAME: &str = "AWS_LAMBDA_LOG_GROUP_NAME";
+static AWS_LAMBDA_LOG_STREAM_NAME: &str = "AWS_LAMBDA_LOG_STREAM_NAME";
+static AWS_ACCESS_KEY: &str = "AWS_ACCESS_KEY";
+static AWS_ACCESS_KEY_ID: &str = "AWS_ACCESS_KEY_ID";
+static AWS_SECRET_ACCESS_KEY: &str = "AWS_SECRET_ACCESS_KEY";
+static AWS_SESSION_TOKEN: &str = "AWS_SESSION_TOKEN";
+static AWS_LAMBDA_RUNTIME_API: &str = "AWS_LAMBDA_RUNTIME_API";
+static LAMBDA_TASK_ROOT: &str = "LAMBDA_TASK_ROOT";
+static LAMBDA_RUNTIME_DIR: &str = "LAMBDA_RUNTIME_DIR";
+static TZ: &str = "TZ";
+
 
 /// An implementation of [`LambdaContext`], [`LambdaContextSetter`] and [`LambdaEnvSetter`].
 pub struct EventContext {
@@ -44,31 +63,31 @@ impl Default for EventContext {
     fn default() -> Self {
         use std::env;
         Self {
-            handler: env::var("_HANDLER").ok(),
-            default_region: env::var("AWS_DEFAULT_REGION").ok(),
-            region: env::var("AWS_REGION").ok(),
+            handler: env::var(_HANDLER).ok(),
+            default_region: env::var(AWS_DEFAULT_REGION).ok(),
+            region: env::var(AWS_REGION).ok(),
             trace_id: None,
-            execution_env: env::var("AWS_EXECUTION_ENV").ok(),
-            function_name: env::var("AWS_LAMBDA_FUNCTION_NAME").ok(),
-            function_memory_size: match env::var("AWS_LAMBDA_FUNCTION_MEMORY_SIZE").ok() {
+            execution_env: env::var(AWS_EXECUTION_ENV).ok(),
+            function_name: env::var(AWS_LAMBDA_FUNCTION_NAME).ok(),
+            function_memory_size: match env::var(AWS_LAMBDA_FUNCTION_MEMORY_SIZE).ok() {
                 Some(v) => v.parse::<usize>().ok(),
                 None => None,
             },
-            function_version: env::var("AWS_LAMBDA_FUNCTION_VERSION").ok(),
-            initialization_type: match env::var("AWS_LAMBDA_INITIALIZATION_TYPE").ok() {
+            function_version: env::var(AWS_LAMBDA_FUNCTION_VERSION).ok(),
+            initialization_type: match env::var(AWS_LAMBDA_INITIALIZATION_TYPE).ok() {
                 Some(v) => InitializationType::from_string(&v),
                 None => InitializationType::Unknown,
             },
-            log_group_name: env::var("AWS_LAMBDA_LOG_GROUP_NAME").ok(),
-            log_stream_name: env::var("AWS_LAMBDA_LOG_STREAM_NAME").ok(),
-            access_key: env::var("AWS_ACCESS_KEY").ok(),
-            access_key_id: env::var("AWS_ACCESS_KEY_ID").ok(),
-            secret_access_key: env::var("AWS_SECRET_ACCESS_KEY").ok(),
-            session_token: env::var("AWS_SESSION_TOKEN").ok(),
-            runtime_api: env::var("AWS_LAMBDA_RUNTIME_API").ok(),
-            task_root: env::var("LAMBDA_TASK_ROOT").ok(),
-            runtime_dir: env::var("LAMBDA_RUNTIME_DIR").ok(),
-            tz: env::var("TZ").ok(),
+            log_group_name: env::var(AWS_LAMBDA_LOG_GROUP_NAME).ok(),
+            log_stream_name: env::var(AWS_LAMBDA_LOG_STREAM_NAME).ok(),
+            access_key: env::var(AWS_ACCESS_KEY).ok(),
+            access_key_id: env::var(AWS_ACCESS_KEY_ID).ok(),
+            secret_access_key: env::var(AWS_SECRET_ACCESS_KEY).ok(),
+            session_token: env::var(AWS_SESSION_TOKEN).ok(),
+            runtime_api: env::var(AWS_LAMBDA_RUNTIME_API).ok(),
+            task_root: env::var(LAMBDA_TASK_ROOT).ok(),
+            runtime_dir: env::var(LAMBDA_RUNTIME_DIR).ok(),
+            tz: env::var(TZ).ok(),
             deadline: None,
             function_arn: None,
             request_id: None,
