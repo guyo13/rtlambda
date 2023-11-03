@@ -2,9 +2,9 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
+use crate::api::Transport;
 use crate::data::response::*;
 use crate::error::Error;
-use crate::transport::Transport;
 use ureq::Agent;
 use ureq::Response;
 

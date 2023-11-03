@@ -5,12 +5,11 @@
 /// Defines the interface an event handler should implement.
 pub mod event_handler;
 
-use crate::api::{LambdaContext, LambdaContextSetter, LambdaEnvSetter, LambdaEnvVars};
+use crate::api::{LambdaContext, LambdaContextSetter, LambdaEnvSetter, LambdaEnvVars, Transport};
 use crate::data::context::EventContext;
 use crate::data::response::{LambdaAPIResponse, AWS_FUNC_ERR_TYPE};
 use crate::error::{Error, CONTAINER_ERR};
 use crate::runtime::event_handler::EventHandler;
-use crate::transport::Transport;
 
 // Already handles any panic inducing errors
 macro_rules! handle_response {
@@ -45,7 +44,7 @@ pub trait LambdaRuntime {
     /// Defines the type of the event handler executed by the runtime in each invocation.
     type Handler: EventHandler;
     /// Defines the Transport type. See `[crate::transport::Transport]`.
-    type Transport: crate::transport::Transport;
+    type Transport: crate::api::Transport;
     /// Used to fetch the next event from the Lambda service.
     fn next_invocation(&mut self) -> Result<<Self::Transport as Transport>::Response, Error>;
     /// Sends back a JSON formatted response to the Lambda service, after processing an event.

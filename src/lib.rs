@@ -12,8 +12,6 @@ pub mod data;
 pub mod error;
 /// Defines the [`crate::runtime::LambdaRuntime`] API and provides a default generic implementation.
 pub mod runtime;
-/// Defines the [`crate::transport::Transport`] abstraction used to support multiple HTTP backends.
-pub mod transport;
 
 /// The current Lambda API version used on AWS.
 pub static LAMBDA_VER: &str = "2018-06-01";
