@@ -13,6 +13,10 @@ impl Error {
     pub fn new(msg: String) -> Self {
         Error { msg }
     }
+
+    pub fn empty() -> Self {
+        Error::new(String::with_capacity(0))
+    }
 }
 
 impl Display for Error {
