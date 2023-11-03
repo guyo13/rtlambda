@@ -7,27 +7,13 @@ use crate::api::{
     AWS_REQ_ID, AWS_TRACE_ID,
 };
 use crate::error::Error;
-use ureq::Agent;
-use ureq::Response;
-
 use std::time::Duration;
+use ureq::Agent;
 
-/// A wrapper that processes a [ureq::Response] and implements the [`crate::api::LambdaAPIResponse`] trait.
-pub struct UreqResponse {
-    resp: ureq::Response,
-}
-
-impl UreqResponse {
-    /// A constructor that consumes a [ureq::Response] by copying the relevant headers and reading the request body.
-    fn from_response(resp: ureq::Response) -> Result<Self, Error> {
-        Ok(Self { resp })
-    }
-}
-
-impl LambdaAPIResponse for UreqResponse {
+impl LambdaAPIResponse for ureq::Response {
     #[inline(always)]
     fn get_body(self) -> Result<String, Error> {
-        match self.resp.into_string() {
+        match self.into_string() {
             Ok(data) => Ok(data),
             Err(err) => Err(Error::new(format!("{}", err))),
         }
@@ -35,17 +21,17 @@ impl LambdaAPIResponse for UreqResponse {
 
     #[inline(always)]
     fn get_status_code(&self) -> u16 {
-        self.resp.status()
+        self.status()
     }
 
     #[inline]
     fn get_aws_request_id(&self) -> Option<&str> {
-        self.resp.header(AWS_REQ_ID)
+        self.header(AWS_REQ_ID)
     }
 
     #[inline]
     fn get_deadline(&self) -> Option<u64> {
-        match self.resp.header(AWS_DEADLINE_MS) {
+        match self.header(AWS_DEADLINE_MS) {
             Some(ms) => match ms.parse::<u64>() {
                 Ok(val) => Some(val),
                 Err(_) => None,
@@ -56,22 +42,22 @@ impl LambdaAPIResponse for UreqResponse {
 
     #[inline]
     fn get_invoked_function_arn(&self) -> Option<&str> {
-        self.resp.header(AWS_FUNC_ARN)
+        self.header(AWS_FUNC_ARN)
     }
 
     #[inline]
     fn get_x_ray_tracing_id(&self) -> Option<&str> {
-        self.resp.header(AWS_TRACE_ID)
+        self.header(AWS_TRACE_ID)
     }
 
     #[inline]
     fn get_client_context(&self) -> Option<&str> {
-        self.resp.header(AWS_CLIENT_CTX)
+        self.header(AWS_CLIENT_CTX)
     }
 
     #[inline]
     fn get_cognito_identity(&self) -> Option<&str> {
-        self.resp.header(AWS_COG_ID)
+        self.header(AWS_COG_ID)
     }
 }
 
@@ -99,7 +85,7 @@ impl UreqTransport {
         url: &str,
         body: Option<&str>,
         headers: Option<(Vec<&str>, Vec<&str>)>,
-    ) -> Result<Response, Error> {
+    ) -> Result<ureq::Response, Error> {
         let mut req = self.agent.request(method, url);
         if let Some(headers) = headers {
             let (keys, values) = headers;
@@ -118,7 +104,7 @@ impl UreqTransport {
 }
 
 impl Transport for UreqTransport {
-    type Response = UreqResponse;
+    type Response = ureq::Response;
 
     fn get(
         &self,
@@ -126,11 +112,7 @@ impl Transport for UreqTransport {
         body: Option<&str>,
         headers: Option<(Vec<&str>, Vec<&str>)>,
     ) -> Result<Self::Response, Error> {
-        let res = self.request("GET", url, body, headers);
-        if let Ok(res) = res {
-            return Self::Response::from_response(res);
-        }
-        Err(res.unwrap_err())
+        self.request("GET", url, body, headers)
     }
 
     fn post(
@@ -139,10 +121,6 @@ impl Transport for UreqTransport {
         body: Option<&str>,
         headers: Option<(Vec<&str>, Vec<&str>)>,
     ) -> Result<Self::Response, Error> {
-        let res = self.request("POST", url, body, headers);
-        if let Ok(res) = res {
-            return Self::Response::from_response(res);
-        }
-        Err(res.unwrap_err())
+        self.request("POST", url, body, headers)
     }
 }

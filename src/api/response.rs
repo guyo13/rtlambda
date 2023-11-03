@@ -14,17 +14,6 @@ pub static AWS_FUNC_ERR_TYPE: &str = "Lambda-Runtime-Function-Error-Type";
 
 //Based on [https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html#runtimes-api-next]
 /// A trait serving as an abstraction of the response from the [AWS Lambda runtime API](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-api.html).
-///
-/// It encapsulates all of the 4 possible response types defined by the runtime API.
-/// Differentiating between them and correctly reading the response are implementation details.
-///
-/// Implementations of this trait *should* enable reading data without requiring ownership of or exclusive reference to the type,
-/// therefore it is **not** always possible to implement it **directly** on HTTP Response types exposed by different vendors -
-/// for example reading the body from a [ureq::Response](https://docs.rs/ureq/2.4.0/ureq/struct.Response.html#method.into_string) instance
-/// moves the instance, making reading any header (for example request id) or the response's status code impossible.
-///
-/// A good approach is to implement this trait on a wrapper struct that acts as an adapter by caching the relevant headers and reads the response body.
-/// For an example see [`crate::backends::ureq::UreqResponse`].
 pub trait LambdaAPIResponse {
     // TODO: find out whether lambda might send a non-UTF-8 encoded json event and change signature if needed
     fn get_body(self) -> Result<String, Error>;
