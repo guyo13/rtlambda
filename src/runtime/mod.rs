@@ -2,14 +2,12 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-/// Defines the interface an event handler should implement.
-pub mod event_handler;
-
-use crate::api::{LambdaContext, LambdaContextSetter, LambdaEnvSetter, LambdaEnvVars, Transport};
+use crate::api::{
+    EventHandler, LambdaContext, LambdaContextSetter, LambdaEnvSetter, LambdaEnvVars, Transport,
+};
 use crate::data::context::EventContext;
 use crate::data::response::{LambdaAPIResponse, AWS_FUNC_ERR_TYPE};
 use crate::error::{Error, CONTAINER_ERR};
-use crate::runtime::event_handler::EventHandler;
 
 // Already handles any panic inducing errors
 macro_rules! handle_response {

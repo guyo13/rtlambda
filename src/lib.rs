@@ -23,7 +23,6 @@ pub mod prelude {
     pub use crate::api::*;
     pub use crate::backends::ureq::*;
     pub use crate::data::context::EventContext;
-    pub use crate::runtime::event_handler::EventHandler;
     pub use crate::runtime::{DefaultRuntime, LambdaRuntime};
     pub use crate::LAMBDA_VER;
 }
