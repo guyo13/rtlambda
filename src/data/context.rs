@@ -10,7 +10,7 @@ use std::time::Duration;
 
 static _X_AMZN_TRACE_ID: &str = "_X_AMZN_TRACE_ID";
 
-/// An implementation of both [`LambdaEnvVars`] and [`LambdaContext`]
+/// An implementation of [`LambdaContext`], [`LambdaContextSetter`] and [`LambdaEnvSetter`].
 pub struct EventContext {
     pub handler: Option<String>,
     pub region: Option<String>,
