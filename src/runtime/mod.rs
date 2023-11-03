@@ -4,7 +4,7 @@
 
 use crate::api::{
     EventHandler, LambdaAPIResponse, LambdaContext, LambdaContextSetter, LambdaEnvSetter,
-    LambdaEnvVars, Transport, AWS_FUNC_ERR_TYPE,
+    LambdaEnvVars, LambdaRuntime, Transport, AWS_FUNC_ERR_TYPE,
 };
 use crate::data::context::EventContext;
 use crate::error::{Error, CONTAINER_ERR};
@@ -35,37 +35,6 @@ macro_rules! format_version_string {
             $version.to_string()
         }
     };
-}
-
-/// A generic trait defining an interface for the Lambda runtime.
-pub trait LambdaRuntime {
-    /// Defines the type of the event handler executed by the runtime in each invocation.
-    type Handler: EventHandler;
-    /// Defines the Transport type. See `[crate::transport::Transport]`.
-    type Transport: crate::api::Transport;
-    /// Used to fetch the next event from the Lambda service.
-    fn next_invocation(&mut self) -> Result<<Self::Transport as Transport>::Response, Error>;
-    /// Sends back a JSON formatted response to the Lambda service, after processing an event.
-    fn invocation_response(
-        &self,
-        request_id: &str,
-        response: &<Self::Handler as EventHandler>::Output,
-    ) -> Result<<Self::Transport as Transport>::Response, Error>;
-    /// Used to report an error during initialization to the Lambda service.
-    fn initialization_error(
-        &self,
-        error_type: Option<&str>,
-        error_req: Option<&str>,
-    ) -> Result<<Self::Transport as Transport>::Response, Error>;
-    /// Used to report an error during function invocation to the Lambda service.
-    fn invocation_error(
-        &self,
-        request_id: &str,
-        error_type: Option<&str>,
-        error_req: Option<&str>,
-    ) -> Result<<Self::Transport as Transport>::Response, Error>;
-    /// Implements the runtime loop logic.
-    fn run(&mut self);
 }
 
 /// The default generic implementation of the [`LambdaRuntime`] interface.
