@@ -2,8 +2,10 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::api::Transport;
-use crate::data::response::*;
+use crate::api::{
+    LambdaAPIResponse, Transport, AWS_CLIENT_CTX, AWS_COG_ID, AWS_DEADLINE_MS, AWS_FUNC_ARN,
+    AWS_REQ_ID, AWS_TRACE_ID,
+};
 use crate::error::Error;
 use ureq::Agent;
 use ureq::Response;

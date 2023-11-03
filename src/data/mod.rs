@@ -4,5 +4,3 @@
 
 /// Defines the interface of the context object and provides an implementation for it.
 pub mod context;
-/// Defines the interface used to read a response from the Lambda API.
-pub mod response;

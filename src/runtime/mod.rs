@@ -3,10 +3,10 @@
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
 use crate::api::{
-    EventHandler, LambdaContext, LambdaContextSetter, LambdaEnvSetter, LambdaEnvVars, Transport,
+    EventHandler, LambdaAPIResponse, LambdaContext, LambdaContextSetter, LambdaEnvSetter,
+    LambdaEnvVars, Transport, AWS_FUNC_ERR_TYPE,
 };
 use crate::data::context::EventContext;
-use crate::data::response::{LambdaAPIResponse, AWS_FUNC_ERR_TYPE};
 use crate::error::{Error, CONTAINER_ERR};
 
 // Already handles any panic inducing errors

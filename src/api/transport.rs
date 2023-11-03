@@ -2,7 +2,7 @@
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
-use crate::data::response::LambdaAPIResponse;
+use crate::api::LambdaAPIResponse;
 use crate::error::Error;
 
 /// A generic trait that is used as an abstraction to the HTTP client library (AKA "Backend")
