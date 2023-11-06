@@ -38,24 +38,31 @@ pub struct EchoMessage {
 }
 
 // Implement the event handler
-pub struct EchoEventHandler {}
+pub struct EchoEventHandler {
+    my_int: i32, // If any of your resources are not [`std::marker::Sized`], use a Box!
+                 // my_db_conn: Box<MyDynDbConnection>
+}
 
 impl EventHandler for EchoEventHandler {
     // Defines the Output type which must implement [`serde::Serialize`]
-    type Output = EchoMessage;
-    // The error type must implement the `Display` trait
-    type Error = String;
+    type EventOutput = EchoMessage;
+    // The error types must implement the `Display` trait
+    type EventError = String;
+    type InitError = String;
 
-    fn initialize(&mut self) -> Result<(), Self::Error> {
+    fn initialize() -> Result<Self, Self::EventError> {
         // Initialization logic goes here...
-        Ok(())
+        // Construct your EventHandler object
+        Ok(Self { my_int: 42 })
+        // If an error occurs during initialization return Err
+        //Err("Something bad happened!".to_string())
     }
 
     fn on_event<Ctx: LambdaContext>(
         &mut self,
         event: &str,
         context: &Ctx,
-    ) -> Result<Self::Output, Self::Error> {
+    ) -> Result<Self::EventOutput, Self::EventError> {
         // Get the aws request id
         let req_id = context.get_aws_request_id().unwrap();
 
@@ -65,7 +72,7 @@ impl EventHandler for EchoEventHandler {
 
         // Echo the event back as a string.
         Ok(EchoMessage {
-            msg: format!("ECHO: {}", event),
+            msg: format!("my_int: {}, ECHO: {}", self.my_int, event),
             req_id: req_id.to_string(),
         })
     }
@@ -74,8 +81,8 @@ impl EventHandler for EchoEventHandler {
 fn main() {
     // Create a runtime instance and run its loop.
     // This is the equivalent of:
-    // let mut runtime =  DefaultRuntime::<UreqTransport, EchoEventHandler>::new(LAMBDA_VER, EchoEventHandler {});
-    let mut runtime = default_runtime!(EchoEventHandler {});
+    // let mut runtime =  DefaultRuntime::<UreqTransport, EchoEventHandler>::new(LAMBDA_VER);
+    let mut runtime = default_runtime!(EchoEventHandler);
 
     runtime.run();
 }

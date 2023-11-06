@@ -52,12 +52,13 @@ pub struct DefaultRuntime<T: Transport, H: EventHandler> {
     api_base: String,
     /// An owned instance of the HTTP Backend implementing [`crate::transport::Transport`].
     transport: T,
-    /// The event handler instance.
-    handler: H,
+    /// The event handler instance. It is a lazy field which is initialized when the runtime starts.
+    /// The reason is that any errors that may occur during initialization are captured and handled by the runtime.
+    handler: Option<H>,
 }
 
 impl<T: Transport, H: EventHandler> DefaultRuntime<T, H> {
-    pub fn new(version: &str, handler: H) -> Self {
+    pub fn new(version: &str) -> Self {
         // Initialize the context object
         let context = EventContext::default();
         // Check for the host and port of the runtime API.
@@ -77,7 +78,7 @@ impl<T: Transport, H: EventHandler> DefaultRuntime<T, H> {
             version: formatted_version,
             api_base,
             transport,
-            handler,
+            handler: None,
         }
     }
 }
@@ -92,7 +93,7 @@ where
 
     fn run(&mut self) {
         // Run the app's initializer and check for errors
-        let init_result = self.handler.initialize();
+        let init_result = Self::Handler::initialize();
         if let Err(init_err) = init_result {
             // Report any initialization error to the Lambda service
             // TODO: Serialize the init_err and the error type into JSON as specified in
@@ -108,6 +109,7 @@ where
             // After reporting an init error just panic.
             panic!("Initialization Error: {}", &init_err);
         }
+        self.handler = init_result.ok();
 
         // Start event processing loop as specified in [https://docs.aws.amazon.com/lambda/latest/dg/runtimes-custom.html]
         loop {
@@ -125,7 +127,11 @@ where
 
             // Execute the event handler
             // TODO - pass the event an an owned String
-            let lambda_output = self.handler.on_event(&event, &self.context);
+            let lambda_output = self
+                .handler
+                .as_mut()
+                .unwrap()
+                .on_event(&event, &self.context);
             let request_id = self.context.get_aws_request_id().unwrap();
 
             // TODO - figure out what we'd like to do with the result returned from success/client-err api responses (e.g: log, run a user defined callback...)
@@ -174,7 +180,7 @@ where
     fn invocation_response(
         &self,
         request_id: &str,
-        response: &<Self::Handler as EventHandler>::Output,
+        response: &<Self::Handler as EventHandler>::EventOutput,
     ) -> Result<<Self::Transport as Transport>::Response, Error> {
         let url = format!(
             "http://{}/{}/runtime/invocation/{}/response",

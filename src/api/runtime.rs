@@ -17,7 +17,7 @@ pub trait LambdaRuntime {
     fn invocation_response(
         &self,
         request_id: &str,
-        response: &<Self::Handler as EventHandler>::Output,
+        response: &<Self::Handler as EventHandler>::EventOutput,
     ) -> Result<<Self::Transport as Transport>::Response, Error>;
     /// Used to report an error during initialization to the Lambda service.
     fn initialization_error(

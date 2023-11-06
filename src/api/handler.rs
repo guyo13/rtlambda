@@ -9,14 +9,16 @@ use std::fmt::Display;
 
 /// Defines an event handler plus any initilization logic required for implementing the lambda.
 /// This is the main interface users of the library should implement.
-pub trait EventHandler {
+pub trait EventHandler: Sized {
     /// Defines the lambda's output type which must implement or derive [`serde::Serialize`] in order to be sent as a JSON to the RuntimeAPI.
-    type Output: Serialize;
-    /// Defines the lambda's error output type which must implement or derive [`Display`].
-    type Error: Display;
-    /// Sets up any resources that are reusable across the lifetime of the lambda instance.
-    /// Returns a [`Result`] that indicates whether initialization succeeded and if not contains an error object.
-    fn initialize(&mut self) -> Result<(), Self::Error>;
+    type EventOutput: Serialize;
+    /// Defines the lambda's error type which must implement or derive [`Display`].
+    type EventError: Display;
+    /// Defines the lambda's initialization error type which must implement or derive [`Display`].
+    type InitError: Display;
+    /// Constructs the event handler object and sets up any resources that are reusable across the lifetime of the lambda instance.
+    /// Returns a [`Result`] with the event handler object or an error object if failed.
+    fn initialize() -> Result<Self, Self::InitError>;
     /// Processes each incoming lambda event and returns a [`Result`] with the lambda's output.
     /// # Arguments
     ///
@@ -27,5 +29,5 @@ pub trait EventHandler {
         &mut self,
         event: &str,
         context: &Ctx,
-    ) -> Result<Self::Output, Self::Error>;
+    ) -> Result<Self::EventOutput, Self::EventError>;
 }
