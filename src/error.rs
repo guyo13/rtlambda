@@ -1,4 +1,4 @@
-// Copyright 2022 Guy Or and the "rtlambda" authors. All rights reserved.
+// Copyright 2022-2023 Guy Or and the "rtlambda" authors. All rights reserved.
 
 // `SPDX-License-Identifier: MIT OR Apache-2.0`
 
@@ -12,6 +12,10 @@ pub struct Error {
 impl Error {
     pub fn new(msg: String) -> Self {
         Error { msg }
+    }
+
+    pub fn empty() -> Self {
+        Error::new(String::with_capacity(0))
     }
 }
 
