@@ -8,8 +8,7 @@ use super::LambdaEnvVars;
 /// The context object exposes constant data from the instance's environment variables,
 /// as well as data - such as request id and execution deadline - that is specific to each event.
 pub trait LambdaContext: LambdaEnvVars {
-    /// A default implementation that calculates the time difference between its time of invocation and the
-    /// handler execution deadline specified by AWS Lambda.
+    /// A default implementation that relies on the `get_deadline` function to calculate the remaining time.
     fn get_remaining_time_ms(&self) -> Result<Duration, Error> {
         let now = std::time::SystemTime::now();
         match now.duration_since(std::time::SystemTime::UNIX_EPOCH) {
