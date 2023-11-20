@@ -50,7 +50,7 @@ impl EventHandler for EchoEventHandler {
     type EventError = String;
     type InitError = String;
 
-    fn initialize() -> Result<Self, Self::EventError> {
+    fn initialize() -> Result<Self, Self::InitError> {
         // Initialization logic goes here...
         // Construct your EventHandler object
         Ok(Self { my_int: 42 })
