@@ -1,6 +1,6 @@
 [package]
 name = "rtlambda"
-version = "0.0.1"
+version = "0.0.2-remove-dd"
 authors = ["Guy Or <guydude1@gmail.com>"]
 description = "A Rust runtime for AWS Lambda and a library for creating custom runtimes."
 license = "MIT OR Apache-2.0"

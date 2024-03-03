@@ -1,3 +1,5 @@
 /target
 /Cargo.lock
 examples/file-server.rs
+.DS_Store
+.vscode/

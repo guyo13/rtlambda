@@ -7,40 +7,39 @@ extern crate rtlambda;
 
 // Create a struct representing the lambda's response, and derive the [`serde::Serialize`] trait.
 #[derive(Serialize, Clone)]
-struct EchoMessage {
+pub struct EchoMessage {
     msg: String,
     req_id: String,
 }
 
-// Define output and error types for berevity.
-// The Output type must implement [`serde::Serialize`]
-type OUT = EchoMessage;
-// The error type must implement the `Display` trait
-type ERR = String;
+// Implement the event handler
+pub struct EchoEventHandler {
+    my_int: i32, // If any of your resources are not [`std::marker::Sized`], use a Box!
+                 // my_db_conn: Box<MyDynDbConnection>
+}
 
-// Implement an initialization function.
-// The initialization function returns a Result with the Ok type resolving to a dynamically allocated
-// closure that accepts the Event from Lambda (as an optional string) and the context object.
-// The closure itself returns a Result with the Ok and Err types being the previously defined `OUT` and `ERR` types respectively.
-// The initialization function may fail (e.g if a db connection was not succesfully opened, etc..) and in that case
-// the function should return an Err variant of the same `ERR` type defined for the event handler.
-fn initialize() -> Result<
-    Box<dyn Fn(Option<&str>, RefLambdaContext<LambdaRuntimeEnv, UreqResponse>) -> Result<OUT, ERR>>,
-    ERR,
-> {
-    return Ok(Box::new(move |event, context| {
+impl EventHandler for EchoEventHandler {
+    // Defines the Output type which must implement [`serde::Serialize`]
+    type EventOutput = EchoMessage;
+    // The error types must implement the `Display` trait
+    type EventError = String;
+    type InitError = String;
+
+    fn initialize() -> Result<Self, Self::InitError> {
+        // Initialization logic goes here...
+        // Construct your EventHandler object
+        Ok(Self { my_int: 42 })
+        // If an error occurs during initialization return Err
+        //Err("Something bad happened!".to_string())
+    }
+
+    fn on_event<Ctx: LambdaContext>(
+        &mut self,
+        event: &str,
+        context: &Ctx,
+    ) -> Result<Self::EventOutput, Self::EventError> {
         // Get the aws request id
-        let req_id = context.aws_request_id().unwrap();
-
-        // Unwrap the event string
-        let event = match event {
-            Some(v) => v,
-            None => {
-                return Err(format!(
-                    "AWS should not permit empty events. Something strange must've happened."
-                ))
-            }
-        };
+        let req_id = context.get_aws_request_id().unwrap();
 
         if event == "\"\"" {
             return Err(format!("Empty input, nothing to echo."));
@@ -48,17 +47,17 @@ fn initialize() -> Result<
 
         // Echo the event back as a string.
         Ok(EchoMessage {
-            msg: format!("ECHO: {}", event),
+            msg: format!("my_int: {}, ECHO: {}", self.my_int, event),
             req_id: req_id.to_string(),
         })
-    }));
+    }
 }
 
 fn main() {
     // Create a runtime instance and run its loop.
     // This is the equivalent of:
-    // let mut runtime =  DefaultRuntime::<UreqResponse, UreqTransport, LambdaRuntimeEnv, OUT, ERR>::new(LAMBDA_VER, initialize);
-    let mut runtime = default_runtime!(OUT, ERR, LAMBDA_VER, initialize);
+    // let mut runtime =  DefaultRuntime::<UreqTransport, EchoEventHandler>::new(LAMBDA_VER);
+    let mut runtime = default_runtime!(EchoEventHandler);
 
     runtime.run();
 }
