@@ -19,6 +19,7 @@ serde_json = { version = "1.0" }
 
 [dev-dependencies]
 serde = { version = "1", features = ["derive"] }
+serial_test = "2.0"
 
 [features]
 default = ["ureq"]

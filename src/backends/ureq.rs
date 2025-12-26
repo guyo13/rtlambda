@@ -83,7 +83,7 @@ impl UreqTransport {
     ) -> Result<ureq::Response, Error> {
         let mut req = self.agent.request(method, url);
         if let Some(headers) = headers {
-            for (key, value) in headers {
+            for (key, value) in headers.iter() {
                 req = req.set(key, value);
             }
         }

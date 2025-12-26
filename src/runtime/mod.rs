@@ -11,6 +11,9 @@ use crate::api::{
 use crate::data::context::EventContext;
 use crate::error::{Error, CONTAINER_ERR};
 
+#[cfg(test)]
+mod tests;
+
 // Already handles any panic inducing errors
 macro_rules! handle_response {
     ($resp:expr) => {
@@ -213,13 +216,8 @@ where
             "http://{}/{}/runtime/init/error",
             self.api_base, self.version
         );
-        let headers_vec;
-        let headers = if let Some(et) = error_type {
-            headers_vec = [(AWS_FUNC_ERR_TYPE, et)];
-            Some(&headers_vec[..])
-        } else {
-            None
-        };
+        let headers_storage = error_type.map(|et| [(AWS_FUNC_ERR_TYPE, et)]);
+        let headers = headers_storage.as_ref().map(|h| &h[..]);
         let resp = self.transport.post(&url, error_req, headers)?;
         handle_response!(resp);
 
@@ -236,13 +234,8 @@ where
             "http://{}/{}/runtime/invocation/{}/error",
             self.api_base, self.version, request_id
         );
-        let headers_vec;
-        let headers = if let Some(et) = error_type {
-            headers_vec = [(AWS_FUNC_ERR_TYPE, et)];
-            Some(&headers_vec[..])
-        } else {
-            None
-        };
+        let headers_storage = error_type.map(|et| [(AWS_FUNC_ERR_TYPE, et)]);
+        let headers = headers_storage.as_ref().map(|h| &h[..]);
         let resp = self.transport.post(&url, error_req, headers)?;
         handle_response!(resp);
 
