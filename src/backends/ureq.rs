@@ -31,13 +31,8 @@ impl LambdaAPIResponse for ureq::Response {
 
     #[inline]
     fn get_deadline(&self) -> Option<u64> {
-        match self.header(AWS_DEADLINE_MS) {
-            Some(ms) => match ms.parse::<u64>() {
-                Ok(val) => Some(val),
-                Err(_) => None,
-            },
-            None => None,
-        }
+        self.header(AWS_DEADLINE_MS)
+            .and_then(|ms| ms.parse::<u64>().ok())
     }
 
     #[inline]
@@ -84,14 +79,12 @@ impl UreqTransport {
         method: &str,
         url: &str,
         body: Option<&str>,
-        headers: Option<(Vec<&str>, Vec<&str>)>,
+        headers: Option<&[(&str, &str)]>,
     ) -> Result<ureq::Response, Error> {
         let mut req = self.agent.request(method, url);
         if let Some(headers) = headers {
-            let (keys, values) = headers;
-            let len = std::cmp::min(keys.len(), values.len());
-            for i in 0..len {
-                req = req.set(keys[i], values[i]);
+            for (key, value) in headers {
+                req = req.set(key, value);
             }
         }
         if let Some(body) = body {
@@ -110,7 +103,7 @@ impl Transport for UreqTransport {
         &self,
         url: &str,
         body: Option<&str>,
-        headers: Option<(Vec<&str>, Vec<&str>)>,
+        headers: Option<&[(&str, &str)]>,
     ) -> Result<Self::Response, Error> {
         self.request("GET", url, body, headers)
     }
@@ -119,7 +112,7 @@ impl Transport for UreqTransport {
         &self,
         url: &str,
         body: Option<&str>,
-        headers: Option<(Vec<&str>, Vec<&str>)>,
+        headers: Option<&[(&str, &str)]>,
     ) -> Result<Self::Response, Error> {
         self.request("POST", url, body, headers)
     }

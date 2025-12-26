@@ -22,12 +22,13 @@ pub trait EventHandler: Sized {
     /// Processes each incoming lambda event and returns a [`Result`] with the lambda's output.
     /// # Arguments
     ///
-    /// * `event` - The JSON event as a string slice, should be deserialized by the implementation.
+    /// * `event` - The JSON event as a string, should be deserialized by the implementation.
     /// * `context` - A shared reference to the current event context.
+    ///
     /// `Ctx` Defines the context object type, typically a [`crate::data::context::EventContext`].
     fn on_event<Ctx: LambdaContext>(
         &mut self,
-        event: &str,
+        event: String,
         context: &Ctx,
     ) -> Result<Self::EventOutput, Self::EventError>;
 }

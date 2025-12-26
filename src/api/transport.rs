@@ -17,13 +17,13 @@ pub trait Transport: Default {
         &self,
         url: &str,
         body: Option<&str>,
-        headers: Option<(Vec<&str>, Vec<&str>)>,
+        headers: Option<&[(&str, &str)]>,
     ) -> Result<Self::Response, Error>;
     /// Sends an HTTP POST request to the specified `url` with the optional `body` and `headers`.
     fn post(
         &self,
         url: &str,
         body: Option<&str>,
-        headers: Option<(Vec<&str>, Vec<&str>)>,
+        headers: Option<&[(&str, &str)]>,
     ) -> Result<Self::Response, Error>;
 }

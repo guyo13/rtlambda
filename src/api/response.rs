@@ -37,6 +37,6 @@ pub trait LambdaAPIResponse {
     }
 
     fn is_err(&self) -> bool {
-        matches!(self.get_status_code(), 400..=499 | 500..=599)
+        matches!(self.get_status_code(), 400..=599)
     }
 }
