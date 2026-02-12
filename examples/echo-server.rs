@@ -35,7 +35,7 @@ impl EventHandler for EchoEventHandler {
 
     fn on_event<Ctx: LambdaContext>(
         &mut self,
-        event: &str,
+        event: String,
         context: &Ctx,
     ) -> Result<Self::EventOutput, Self::EventError> {
         // Get the aws request id

@@ -4,3 +4,5 @@
 
 /// Defines the interface of the context object and provides an implementation for it.
 pub mod context;
+#[cfg(test)]
+mod tests;

@@ -11,6 +11,9 @@ use crate::api::{
 use crate::data::context::EventContext;
 use crate::error::{Error, CONTAINER_ERR};
 
+#[cfg(test)]
+mod tests;
+
 // Already handles any panic inducing errors
 macro_rules! handle_response {
     ($resp:expr) => {
@@ -117,7 +120,10 @@ where
             // Failing to get the next event will either panic (on server error) or continue with an error (on client-error codes).
             let next_invo = match self.next_invocation() {
                 // TODO - perhaps log the error
-                Err(_e) => continue,
+                Err(e) => {
+                    eprintln!("Failed to get next invocation: {}", e);
+                    continue;
+                }
                 Ok(resp) => resp,
             };
 
@@ -126,12 +132,11 @@ where
             let event = next_invo.get_body().unwrap();
 
             // Execute the event handler
-            // TODO - pass the event an an owned String
             let lambda_output = self
                 .handler
                 .as_mut()
                 .unwrap()
-                .on_event(&event, &self.context);
+                .on_event(event, &self.context);
             let request_id = self.context.get_aws_request_id().unwrap();
 
             // TODO - figure out what we'd like to do with the result returned from success/client-err api responses (e.g: log, run a user defined callback...)
@@ -211,7 +216,8 @@ where
             "http://{}/{}/runtime/init/error",
             self.api_base, self.version
         );
-        let headers = error_type.map(|et| (vec![AWS_FUNC_ERR_TYPE], vec![et]));
+        let headers_storage = error_type.map(|et| [(AWS_FUNC_ERR_TYPE, et)]);
+        let headers = headers_storage.as_ref().map(|h| &h[..]);
         let resp = self.transport.post(&url, error_req, headers)?;
         handle_response!(resp);
 
@@ -228,7 +234,8 @@ where
             "http://{}/{}/runtime/invocation/{}/error",
             self.api_base, self.version, request_id
         );
-        let headers = error_type.map(|et| (vec![AWS_FUNC_ERR_TYPE], vec![et]));
+        let headers_storage = error_type.map(|et| [(AWS_FUNC_ERR_TYPE, et)]);
+        let headers = headers_storage.as_ref().map(|h| &h[..]);
         let resp = self.transport.post(&url, error_req, headers)?;
         handle_response!(resp);
 
